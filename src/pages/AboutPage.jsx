@@ -84,25 +84,19 @@ const AboutPage = () => {
           <h2 className="text-2xl font-pixel text-red-400 text-center mb-10 drop-shadow-[0_0_10px_rgba(255,0,0,0.3)]">
             OUR TEAM
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {[
-              { name: 'Owner', role: 'FOUNDER', skin: '🎮' },
-              { name: 'Admin', role: 'ADMINISTRATOR', skin: '🛡️' },
-              { name: 'Developer', role: 'DEVELOPER', skin: '💻' },
-            ].map((member) => (
-              <div
-                key={member.role}
-                className="bg-dark-surface border border-red-500/20 rounded-xl p-6 text-center hover:border-red-500/40 transition-all"
-              >
-                <div className="text-5xl mb-4">{member.skin}</div>
-                <h3 className="text-white font-bold text-lg mb-1">{member.name}</h3>
-                <span className="font-pixel text-xs text-red-400">{member.role}</span>
-              </div>
-            ))}
+          <div className="bg-dark-surface border border-red-500/20 rounded-xl p-8 md:p-10">
+            <p className="text-gray-300 leading-relaxed mb-5">
+              We're a small group of self-taught developers and long-time fans who built Redline SMP out of pure passion.
+              We might not have a massive studio or unlimited resources, but we make up for it with grit and a focus on
+              building a premium experience we'd actually want to play in.
+            </p>
+            <p className="text-gray-300 leading-relaxed">
+              For us, this isn't a 'side gig' or a business — it's our favorite hobby. We put our time into this because
+              we love the challenge of running a great server. To keep the lights on and the hardware fast, we offer paid
+              crates and items. The vast majority of that support goes right back into the server's tech and development,
+              helping us keep the revolution going for the whole community.
+            </p>
           </div>
-          <p className="text-gray-500 text-xs text-center mt-4">
-            Replace names and roles with your actual team members.
-          </p>
         </div>
 
         {/* CTA */}
