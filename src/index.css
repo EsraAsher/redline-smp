@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neon-purple: #b026ff;
+  --color-neon-cyan: #00ffff;
+  --color-dark-bg: #0a0a0a;
+  --color-dark-surface: #1a1a1a;
+  --font-pixel: "Press Start 2P", cursive;
+}
+
+@layer utilities {
+  .glow-text {
+    text-shadow: 0 0 10px #b026ff, 0 0 20px #00ffff;
+  }
+  
+  .text-shadow-sm {
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+  }
+  
+  .font-pixel {
+    font-family: 'Press Start 2P', cursive;
+    letter-spacing: -1px;
+  }
+}
+
+html, body {
+  min-height: 100%;
+}
+
+body {
+  position: relative;
+  background-color: #0a0a0a;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.7) 0%,
+      rgba(10, 0, 0, 0.8) 50%,
+      rgba(0, 0, 0, 0.92) 100%
+    ),
+    url('/bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+/* Animations */
+@keyframes bounce-in {
+  0% { transform: scale(0.8); opacity: 0; }
+  80% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a; 
+}
+::-webkit-scrollbar-thumb {
+  background: #333; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b026ff; 
+}
