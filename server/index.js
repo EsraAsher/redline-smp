@@ -45,6 +45,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Root route — confirms API is online
+app.get('/', (req, res) => {
+  res.json({ message: 'Redline SMP API is running', docs: '/api/health' });
+});
+
 // Connect to MongoDB then start server
 const start = async () => {
   try {
