@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: redline-smp-api
+    env: node
+    region: singapore   # closest to India — change to oregon/frankfurt if needed
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # ── Set the values below in Render Dashboard → Environment ──
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_SETUP_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: RCON_HOST
+        sync: false
+      - key: RCON_PORT
+        value: "25575"
+      - key: RCON_PASSWORD
+        sync: false
