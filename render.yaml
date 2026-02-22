@@ -5,8 +5,9 @@ services:
     region: singapore   # closest to India — change to oregon/frankfurt if needed
     plan: free
     rootDir: server
-    buildCommand: npm install
+    buildCommand: npm install --omit=dev
     startCommand: node index.js
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
