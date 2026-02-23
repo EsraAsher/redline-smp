@@ -35,7 +35,8 @@ app.use(cors({
 }));
 
 // ⚠️ Webhook route MUST use raw body — define BEFORE express.json()
-app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+// Support both plural and singular paths to avoid dashboard URL mismatch issues.
+app.use(['/api/payments/webhook', '/api/payment/webhook'], express.raw({ type: 'application/json' }));
 
 app.use(express.json());
 
@@ -45,6 +46,7 @@ app.use('/api/collections', collectionRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

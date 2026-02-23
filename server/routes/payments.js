@@ -114,13 +114,25 @@ router.post('/webhook', async (req, res) => {
       return res.status(500).send('Webhook secret not configured');
     }
 
-    // Verify webhook signature using raw body
+    console.log('Webhook received');
+    console.log('Headers:', req.headers);
+    console.log('Raw body length:', req.body?.length ?? 0);
+
+    // Verify webhook signature using raw body buffer
     const signature = req.headers['x-razorpay-signature'];
-    const rawBody = typeof req.body === 'string' ? req.body : req.body.toString();
+    if (!signature) {
+      console.warn('[Webhook] Missing x-razorpay-signature header');
+      return res.status(400).send('Missing webhook signature');
+    }
+
+    if (!Buffer.isBuffer(req.body)) {
+      console.error('[Webhook] req.body is not a raw Buffer. Check middleware order/path.');
+      return res.status(400).send('Invalid webhook payload format');
+    }
 
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
-      .update(rawBody)
+      .update(req.body)
       .digest('hex');
 
     if (signature !== expectedSignature) {
@@ -128,8 +140,9 @@ router.post('/webhook', async (req, res) => {
       return res.status(400).send('Invalid webhook signature');
     }
 
-    // Parse the event from raw body
-    const event = JSON.parse(rawBody);
+    // Parse the event only after signature verification
+    const event = JSON.parse(req.body.toString('utf8'));
+    console.log('Event:', event?.event);
     console.log('[Webhook] Received:', event.event);
 
     // Only process payment.captured events
