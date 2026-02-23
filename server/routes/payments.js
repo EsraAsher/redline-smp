@@ -1,17 +1,17 @@
 /**
- * Payment Routes — Razorpay integration
+ * Payment Routes — Razorpay integration (Webhook-Only Confirmation)
  *
  * POST /api/payments/create-order   → create Razorpay order + DB order
- * POST /api/payments/verify         → client-side verify after checkout popup
- * POST /api/payments/webhook        → Razorpay webhook (server-to-server)
+ * POST /api/payments/webhook        → Razorpay webhook (server-to-server) — ONLY way to confirm payment
  * GET  /api/payments/order/:id      → get order status (for polling / thank-you page)
+ *
+ * ⚠️  Frontend NEVER confirms payment. Only Razorpay webhook marks orders as paid.
  */
 import { Router } from 'express';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
-import { deliverOrder, isRconConfigured } from '../services/rcon.js';
 
 const router = Router();
 
@@ -98,124 +98,92 @@ router.post('/create-order', async (req, res) => {
   }
 });
 
-// ─── 2. Client-side Verification ──────────────────────────
-// Called after Razorpay checkout popup succeeds, for instant UX.
-// The webhook is the authoritative source — this is a convenience.
-router.post('/verify', async (req, res) => {
-  try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+// ─── 2. (REMOVED) Client-side Verification ───────────────
+// Frontend no longer confirms payment. Only Razorpay webhook can mark orders as paid.
+// This route has been intentionally removed for security.
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ message: 'Missing payment verification fields' });
-    }
-
-    // Verify signature
-    const secret = process.env.RAZORPAY_KEY_SECRET;
-    const body = `${razorpay_order_id}|${razorpay_payment_id}`;
-    const expectedSig = crypto
-      .createHmac('sha256', secret)
-      .update(body)
-      .digest('hex');
-
-    if (expectedSig !== razorpay_signature) {
-      return res.status(400).json({ message: 'Invalid payment signature' });
-    }
-
-    // Update order
-    const order = await Order.findOne({ razorpayOrderId: razorpay_order_id });
-    if (!order) return res.status(404).json({ message: 'Order not found' });
-
-    // Only process if not already paid (webhook may have beaten us)
-    if (order.paymentStatus !== 'paid') {
-      order.razorpayPaymentId = razorpay_payment_id;
-      order.razorpaySignature = razorpay_signature;
-      order.paymentStatus = 'paid';
-      order.status = 'paid';
-      order.paidAt = new Date();
-      await order.save();
-
-      // Update product analytics
-      await updateProductAnalytics(order);
-
-      // Deliver via RCON
-      await attemptDelivery(order);
-    }
-
-    res.json({
-      success: true,
-      orderId: order._id,
-      status: order.status,
-      deliveryStatus: order.deliveryStatus,
-    });
-  } catch (err) {
-    console.error('[Payment] verify error:', err);
-    res.status(500).json({ message: 'Verification failed' });
-  }
-});
-
-// ─── 3. Razorpay Webhook ──────────────────────────────────
+// ─── 3. Razorpay Webhook (ONLY way to confirm payment) ───
 // POST /api/payments/webhook — called by Razorpay servers
-router.post('/webhook', express_raw_body, async (req, res) => {
+// ⚠️  Raw body parsing is handled in server/index.js BEFORE express.json()
+router.post('/webhook', async (req, res) => {
   try {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    if (webhookSecret) {
-      const shasum = crypto.createHmac('sha256', webhookSecret);
-      shasum.update(req.rawBody);
-      const digest = shasum.digest('hex');
-
-      if (digest !== req.headers['x-razorpay-signature']) {
-        console.warn('[Webhook] Invalid signature — ignoring');
-        return res.status(400).json({ message: 'Invalid webhook signature' });
-      }
+    if (!webhookSecret) {
+      console.error('[Webhook] RAZORPAY_WEBHOOK_SECRET is not configured!');
+      return res.status(500).send('Webhook secret not configured');
     }
 
-    const event = req.body;
-    const eventType = event.event;
-    console.log(`[Webhook] Received: ${eventType}`);
+    // Verify webhook signature using raw body
+    const signature = req.headers['x-razorpay-signature'];
+    const rawBody = typeof req.body === 'string' ? req.body : req.body.toString();
 
-    if (eventType === 'payment.captured') {
-      const payment = event.payload.payment.entity;
-      const rzOrderId = payment.order_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('hex');
 
-      const order = await Order.findOne({ razorpayOrderId: rzOrderId });
-      if (!order) {
-        console.warn(`[Webhook] Order not found for ${rzOrderId}`);
-        return res.json({ status: 'ok' }); // still 200 so Razorpay doesn't retry
-      }
-
-      if (order.paymentStatus !== 'paid') {
-        order.razorpayPaymentId = payment.id;
-        order.paymentStatus = 'paid';
-        order.status = 'paid';
-        order.webhookVerified = true;
-        order.paidAt = new Date();
-        await order.save();
-
-        await updateProductAnalytics(order);
-        await attemptDelivery(order);
-      } else {
-        // Already processed (verify route beat us)
-        order.webhookVerified = true;
-        await order.save();
-      }
+    if (signature !== expectedSignature) {
+      console.warn('[Webhook] Invalid signature — rejecting');
+      return res.status(400).send('Invalid webhook signature');
     }
 
-    if (eventType === 'payment.failed') {
-      const payment = event.payload.payment.entity;
-      const rzOrderId = payment.order_id;
-      const order = await Order.findOne({ razorpayOrderId: rzOrderId });
-      if (order && order.paymentStatus !== 'paid') {
-        order.paymentStatus = 'failed';
-        order.status = 'failed';
-        await order.save();
-      }
+    // Parse the event from raw body
+    const event = JSON.parse(rawBody);
+    console.log('[Webhook] Received:', event.event);
+
+    // Only process payment.captured events
+    if (event.event !== 'payment.captured') {
+      console.log(`[Webhook] Ignoring event: ${event.event}`);
+      return res.status(200).send('Event ignored');
     }
 
-    res.json({ status: 'ok' });
+    // Extract payment data
+    const payment = event.payload.payment.entity;
+    const paymentId = payment.id;
+    const razorpayOrderId = payment.order_id;
+    const notes = payment.notes || {};
+    const mcUsername = notes.mcUsername;
+
+    console.log('[Webhook] Processing payment ID:', paymentId);
+    console.log('[Webhook] Razorpay Order ID:', razorpayOrderId);
+    console.log('[Webhook] MC Username:', mcUsername);
+
+    // Prevent duplicate processing
+    const existing = await Order.findOne({ razorpayPaymentId: paymentId });
+    if (existing) {
+      console.log('[Webhook] Already processed payment:', paymentId);
+      return res.status(200).send('Already processed');
+    }
+
+    // Find and update order — ONLY set paid + pending delivery
+    const order = await Order.findOneAndUpdate(
+      { razorpayOrderId: razorpayOrderId },
+      {
+        status: 'paid',
+        paymentStatus: 'paid',
+        webhookVerified: true,
+        deliveryStatus: 'pending',
+        razorpayPaymentId: paymentId,
+        paidAt: new Date(),
+      },
+      { new: true }
+    );
+
+    if (!order) {
+      console.warn(`[Webhook] Order not found for razorpayOrderId: ${razorpayOrderId}`);
+      return res.status(200).send('Order not found'); // 200 so Razorpay doesn't retry
+    }
+
+    console.log(`[Webhook] ✅ Order ${order._id} marked as PAID (webhook verified)`);
+
+    // Update product analytics
+    await updateProductAnalytics(order);
+
+    res.status(200).send('OK');
   } catch (err) {
     console.error('[Webhook] Error:', err);
-    res.json({ status: 'ok' }); // always 200 to prevent Razorpay retries
+    res.status(200).send('Error handled'); // always 200 to prevent Razorpay retries
   }
 });
 
@@ -235,19 +203,6 @@ router.get('/order/:id', async (req, res) => {
 // ─── Helpers ───────────────────────────────────────────────
 
 /**
- * Middleware to capture raw body for webhook signature verification.
- * Express normally parses JSON, which destroys the raw body.
- */
-function express_raw_body(req, res, next) {
-  // If rawBody already exists (set by express.raw), use it
-  if (req.rawBody) return next();
-
-  // Otherwise reconstruct from parsed body
-  req.rawBody = JSON.stringify(req.body);
-  next();
-}
-
-/**
  * Update totalSold / totalRevenue on each Product after a successful payment.
  */
 async function updateProductAnalytics(order) {
@@ -262,35 +217,6 @@ async function updateProductAnalytics(order) {
     }
   } catch (err) {
     console.error('[Analytics] Failed to update product stats:', err.message);
-  }
-}
-
-/**
- * Attempt RCON delivery. Updates order delivery status.
- */
-async function attemptDelivery(order) {
-  try {
-    const { success, log } = await deliverOrder(order.mcUsername, order.items);
-    order.deliveryLog = log;
-
-    if (!isRconConfigured()) {
-      order.deliveryStatus = 'skipped';
-      order.status = 'paid'; // still paid, just not delivered via RCON
-    } else if (success) {
-      order.deliveryStatus = 'delivered';
-      order.status = 'delivered';
-      order.deliveredAt = new Date();
-    } else {
-      order.deliveryStatus = 'failed';
-      // status stays 'paid' — admin can retry manually
-    }
-
-    await order.save();
-  } catch (err) {
-    console.error('[Delivery] Error:', err.message);
-    order.deliveryStatus = 'failed';
-    order.deliveryLog = [...(order.deliveryLog || []), `ERROR: ${err.message}`];
-    await order.save();
   }
 }
 

@@ -34,6 +34,9 @@ app.use(cors({
   credentials: true,
 }));
 
+// ⚠️ Webhook route MUST use raw body — define BEFORE express.json()
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json());
 
 // Routes

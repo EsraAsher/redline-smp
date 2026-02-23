@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
-import { createPaymentOrder, verifyPayment } from '../api/index.js';
+import { createPaymentOrder } from '../api/index.js';
 
 const CartDrawer = () => {
   const { items, cartOpen, setCartOpen, removeFromCart, updateQty, subtotal, clearCart } = useCart();
@@ -70,25 +70,18 @@ const CartDrawer = () => {
             setProcessing(false);
           },
         },
-        handler: async (response) => {
-          // Payment succeeded on Razorpay's side — verify on our backend
-          try {
-            setCheckoutStep('processing');
-            const result = await verifyPayment({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-
-            setOrderResult(result);
-            setCheckoutStep('success');
-            clearCart();
-          } catch (err) {
-            setErrorMsg(err.message || 'Verification failed. Contact support.');
-            setCheckoutStep('error');
-          } finally {
-            setProcessing(false);
-          }
+        handler: function (response) {
+          // Payment succeeded on Razorpay's side — webhook will confirm it
+          // Frontend does NOT verify or update DB. Just show processing state.
+          setCheckoutStep('processing');
+          setOrderResult({
+            orderId: orderData.orderId,
+            razorpayOrderId: response.razorpay_order_id,
+          });
+          clearCart();
+          setProcessing(false);
+          // Show success after brief processing indication
+          setTimeout(() => setCheckoutStep('success'), 2000);
         },
       };
 

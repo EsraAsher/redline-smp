@@ -91,10 +91,7 @@ export const createPaymentOrder = (mcUsername, email, items) =>
     body: JSON.stringify({ mcUsername, email, items }),
   });
 
-export const verifyPayment = (data) =>
-  request('/payments/verify', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+// verifyPayment REMOVED — frontend must NEVER confirm payment status.
+// Only Razorpay webhook can mark orders as paid.
 
 export const getOrderStatus = (orderId) => request(`/payments/order/${orderId}`);
