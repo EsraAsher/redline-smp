@@ -84,11 +84,18 @@ export const fetchAnalyticsOverview = () => request('/analytics/overview');
 export const fetchAnalyticsProducts = () => request('/analytics/products');
 export const fetchRecentOrders = () => request('/analytics/recent-orders');
 
+// ─── Store Code ───────────────────────────────────────────
+export const verifyStoreCode = (username, code) =>
+  request('/storecode/verify', {
+    method: 'POST',
+    body: JSON.stringify({ username, code }),
+  });
+
 // ─── Payments (Razorpay) ──────────────────────────────────
-export const createPaymentOrder = (mcUsername, email, items) =>
+export const createPaymentOrder = (mcUsername, email, items, storeCode) =>
   request('/payments/create-order', {
     method: 'POST',
-    body: JSON.stringify({ mcUsername, email, items }),
+    body: JSON.stringify({ mcUsername, email, items, storeCode }),
   });
 
 // verifyPayment REMOVED — frontend must NEVER confirm payment status.

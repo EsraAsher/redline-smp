@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
-import { createPaymentOrder } from '../api/index.js';
+import { createPaymentOrder, verifyStoreCode } from '../api/index.js';
 
 const CartDrawer = () => {
   const { items, cartOpen, setCartOpen, removeFromCart, updateQty, subtotal, clearCart } = useCart();
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [mcUsername, setMcUsername] = useState(() => localStorage.getItem('mc_username') || '');
   const [email, setEmail] = useState('');
+  const [storeCode, setStoreCode] = useState('');
+  const [codeVerified, setCodeVerified] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState('cart'); // cart | details | processing | success | error
   const [processing, setProcessing] = useState(false);
   const [orderResult, setOrderResult] = useState(null);
@@ -25,9 +28,28 @@ const CartDrawer = () => {
     });
   };
 
+  // ─── Verify store code ──────────────────────────────────
+  const handleVerifyCode = async () => {
+    if (!mcUsername.trim() || !storeCode.trim()) return;
+    setVerifyingCode(true);
+    setErrorMsg('');
+    try {
+      const result = await verifyStoreCode(mcUsername.trim(), storeCode.trim());
+      if (result.success) {
+        setCodeVerified(true);
+      } else {
+        setErrorMsg('Invalid or expired code. Run /storecode in-game to get a new one.');
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Code verification failed.');
+    } finally {
+      setVerifyingCode(false);
+    }
+  };
+
   // ─── Handle checkout ────────────────────────────────────
   const handleCheckout = async () => {
-    if (!mcUsername.trim()) return;
+    if (!mcUsername.trim() || !codeVerified) return;
     
     setProcessing(true);
     setErrorMsg('');
@@ -40,14 +62,15 @@ const CartDrawer = () => {
       const loaded = await loadRazorpayScript();
       if (!loaded) throw new Error('Failed to load Razorpay. Check your internet connection.');
 
-      // Create order on backend
+      // Create order on backend (includes verified store code)
       const orderData = await createPaymentOrder(
         mcUsername.trim(),
         email.trim(),
         items.map((item) => ({
           productId: item.id,
           quantity: item.qty,
-        }))
+        })),
+        storeCode.trim()
       );
 
       // Open Razorpay checkout
@@ -104,6 +127,8 @@ const CartDrawer = () => {
     setErrorMsg('');
     setOrderResult(null);
     setProcessing(false);
+    setStoreCode('');
+    setCodeVerified(false);
   };
 
   const handleClose = () => {
@@ -284,16 +309,58 @@ const CartDrawer = () => {
               />
             </div>
 
+            {/* Store Code Verification */}
+            <div>
+              <label className="block text-gray-400 text-xs mb-1 font-pixel">Store Code *</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={storeCode}
+                  onChange={(e) => { setStoreCode(e.target.value); setCodeVerified(false); }}
+                  placeholder="Enter code from /storecode"
+                  disabled={codeVerified}
+                  className={`flex-1 bg-black/50 border rounded-lg px-4 py-2.5 text-sm focus:outline-none transition-colors font-mono
+                    ${codeVerified
+                      ? 'border-green-500/50 text-green-400'
+                      : 'border-white/20 text-white focus:border-red-500'
+                    }
+                  `}
+                />
+                <button
+                  type="button"
+                  disabled={!mcUsername.trim() || !storeCode.trim() || codeVerified || verifyingCode}
+                  onClick={handleVerifyCode}
+                  className={`px-4 py-2.5 rounded-lg font-pixel text-xs transition-all duration-300 shrink-0
+                    ${codeVerified
+                      ? 'bg-green-600/30 text-green-400 border border-green-500/40 cursor-default'
+                      : !mcUsername.trim() || !storeCode.trim() || verifyingCode
+                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                        : 'bg-red-600 text-white hover:bg-red-500 cursor-pointer'
+                    }
+                  `}
+                >
+                  {codeVerified ? '✓ Verified' : verifyingCode ? '...' : 'Verify'}
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-1">
+                Run <span className="text-red-400 font-mono">/storecode</span> in-game to get your code.
+              </p>
+            </div>
+
+            {errorMsg && checkoutStep === 'details' && (
+              <p className="text-xs text-red-400 text-center">{errorMsg}</p>
+            )}
+
             <div className="flex justify-between items-center pt-2">
               <span className="text-gray-400 font-pixel text-xs">Total</span>
               <span className="text-white font-pixel text-sm">₹{subtotal.toFixed(2)}</span>
             </div>
 
             <button
-              disabled={!mcUsername.trim() || processing}
+              disabled={!mcUsername.trim() || !codeVerified || processing}
               onClick={handleCheckout}
               className={`w-full py-3 font-pixel text-sm rounded-lg transition-all duration-300
-                ${mcUsername.trim() && !processing
+                ${mcUsername.trim() && codeVerified && !processing
                   ? 'bg-red-600 text-white hover:bg-red-500 shadow-[0_0_20px_rgba(255,0,0,0.3)] cursor-pointer'
                   : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
                 }
