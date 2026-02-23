@@ -39,12 +39,17 @@ router.post('/create-order', async (req, res) => {
       return res.status(400).json({ message: 'Store code is required. Use /storecode in-game to get one.' });
     }
 
-    // Verify store code was used (marked used=true by /storecode/verify)
-    const validCode = await StoreCode.findOne({
-      username: mcUsername,
-      code: storeCode,
-      used: true,
-    });
+    // Find valid, unused, unexpired store code and consume it atomically
+    const validCode = await StoreCode.findOneAndUpdate(
+      {
+        username: mcUsername,
+        code: storeCode,
+        used: false,
+        expiresAt: { $gt: new Date() },
+      },
+      { used: true },
+      { new: true }
+    );
 
     if (!validCode) {
       return res.status(403).json({ message: 'Invalid or expired store code. Please generate a new one in-game.' });

@@ -65,9 +65,8 @@ router.post('/verify', async (req, res) => {
       return res.json({ success: false });
     }
 
-    found.used = true;
-    await found.save();
-
+    // Only validate — do NOT mark as used here.
+    // Code is consumed only when /create-order begins payment.
     return res.json({ success: true });
   } catch (error) {
     return res.status(500).json({ success: false });
