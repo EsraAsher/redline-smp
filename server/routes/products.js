@@ -91,7 +91,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/products - create product
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { title, price, image, features, collection, isFeatured, order } = req.body;
+    const { title, price, image, features, commands, collection, isFeatured, order } = req.body;
     
     const col = await Collection.findById(collection);
     if (!col) {
@@ -99,7 +99,14 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     const product = await Product.create({
-      title, price, image, features, collection, isFeatured, order,
+      title,
+      price,
+      image,
+      features,
+      commands: Array.isArray(commands) ? commands : [],
+      collection,
+      isFeatured,
+      order,
     });
 
     const populated = await product.populate('collection', 'name slug');
@@ -112,13 +119,14 @@ router.post('/', authMiddleware, async (req, res) => {
 // PUT /api/products/:id - update product
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const { title, price, image, features, collection, isActive, isFeatured, order } = req.body;
+    const { title, price, image, features, commands, collection, isActive, isFeatured, order } = req.body;
     const updateData = {};
 
     if (title !== undefined) updateData.title = title;
     if (price !== undefined) updateData.price = price;
     if (image !== undefined) updateData.image = image;
     if (features !== undefined) updateData.features = features;
+    if (commands !== undefined) updateData.commands = Array.isArray(commands) ? commands : [];
     if (collection !== undefined) updateData.collection = collection;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
