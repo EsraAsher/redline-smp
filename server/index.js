@@ -8,6 +8,7 @@ import productRoutes from './routes/products.js';
 import analyticsRoutes from './routes/analytics.js';
 import paymentRoutes from './routes/payments.js';
 import storeCodeRoutes from './routes/storecode.js';
+import rewardsRoutes from './routes/rewards.js';
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/storecode', storeCodeRoutes);
+app.use('/api/rewards', rewardsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
