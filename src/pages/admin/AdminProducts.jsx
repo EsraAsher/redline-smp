@@ -13,6 +13,7 @@ const emptyProduct = {
   price: '',
   image: '',
   features: [''],
+  commands: '',
   collection: '',
   isFeatured: false,
   order: 0,
@@ -55,6 +56,7 @@ const AdminProducts = () => {
       price: product.price,
       image: product.image || '',
       features: product.features.length > 0 ? product.features : [''],
+      commands: (product.commands || []).join('\n'),
       collection: product.collection?._id || '',
       isFeatured: product.isFeatured,
       order: product.order || 0,
@@ -93,6 +95,10 @@ const AdminProducts = () => {
         price: parseFloat(form.price),
         order: parseInt(form.order) || 0,
         features: form.features.filter((f) => f.trim()),
+        commands: form.commands
+          .split('\n')
+          .map((cmd) => cmd.trim())
+          .filter(Boolean),
       };
 
       if (editing) {
@@ -276,6 +282,21 @@ const AdminProducts = () => {
               >
                 + Add feature
               </button>
+            </div>
+
+            {/* Execution Commands */}
+            <div>
+              <label className="block text-gray-400 text-xs font-pixel mb-2">EXECUTION COMMANDS</label>
+              <textarea
+                value={form.commands}
+                onChange={(e) => setForm({ ...form, commands: e.target.value })}
+                rows={4}
+                className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500/50 font-mono resize-y"
+                placeholder={`lp user {username} parent add vip\neco give {username} 1000\ncrate give {username} mythic 1`}
+              />
+              <p className="text-[10px] text-gray-500 mt-1">
+                One command per line. Use <span className="text-red-400 font-mono">{'{username}'}</span> as placeholder for the buyer's Minecraft username.
+              </p>
             </div>
 
             <div className="flex gap-3 pt-2">

@@ -74,7 +74,7 @@ router.post('/create-order', async (req, res) => {
         title: prod.title,
         price: prod.price,
         quantity: qty,
-        commands: clientItem.commands || [],
+        commands: prod.commands || [],
       };
     });
 

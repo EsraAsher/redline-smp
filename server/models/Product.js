@@ -43,6 +43,10 @@ const productSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  commands: {
+    type: [String],
+    default: [],
+  },
 }, { timestamps: true, suppressReservedKeysWarning: true });
 
 export default mongoose.model('Product', productSchema);
