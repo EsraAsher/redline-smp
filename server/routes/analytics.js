@@ -73,4 +73,102 @@ router.get('/recent-orders', async (req, res) => {
   }
 });
 
+// ─── Revenue Analytics ────────────────────────────────────
+// GET /api/analytics/revenue
+router.get('/revenue', async (req, res) => {
+  try {
+    const now = new Date();
+
+    // Start of today (midnight local → UTC)
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // 7 days ago
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - 6); // include today → last 7 days
+
+    // Start of current month
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Start of current year
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    const matchStage = {
+      $match: {
+        paymentStatus: 'paid',
+        webhookVerified: true,
+      },
+    };
+
+    const [result] = await Order.aggregate([
+      matchStage,
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$total' },
+          todayRevenue: {
+            $sum: {
+              $cond: [{ $gte: ['$paidAt', todayStart] }, '$total', 0],
+            },
+          },
+          weeklyRevenue: {
+            $sum: {
+              $cond: [{ $gte: ['$paidAt', weekStart] }, '$total', 0],
+            },
+          },
+          monthlyRevenue: {
+            $sum: {
+              $cond: [{ $gte: ['$paidAt', monthStart] }, '$total', 0],
+            },
+          },
+          yearlyRevenue: {
+            $sum: {
+              $cond: [{ $gte: ['$paidAt', yearStart] }, '$total', 0],
+            },
+          },
+        },
+      },
+    ]);
+
+    res.json({
+      totalRevenue: result?.totalRevenue || 0,
+      todayRevenue: result?.todayRevenue || 0,
+      weeklyRevenue: result?.weeklyRevenue || 0,
+      monthlyRevenue: result?.monthlyRevenue || 0,
+      yearlyRevenue: result?.yearlyRevenue || 0,
+    });
+  } catch (error) {
+    console.error('Revenue analytics error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ─── Sales Logs ───────────────────────────────────────────
+// GET /api/analytics/sales
+router.get('/sales', async (req, res) => {
+  try {
+    const orders = await Order.find({
+      paymentStatus: 'paid',
+      webhookVerified: true,
+    })
+      .sort({ paidAt: -1 })
+      .select('mcUsername email items total paidAt deliveryStatus')
+      .lean();
+
+    const logs = orders.map((o) => ({
+      orderId: o._id,
+      mcUsername: o.mcUsername,
+      email: o.email,
+      items: o.items.map((i) => ({ title: i.title, quantity: i.quantity })),
+      total: o.total,
+      paidAt: o.paidAt,
+      deliveryStatus: o.deliveryStatus,
+    }));
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Sales logs error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 export default router;

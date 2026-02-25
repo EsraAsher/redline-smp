@@ -4,12 +4,14 @@ import { fetchAnalyticsOverview, fetchAnalyticsProducts } from '../../api';
 import AdminProducts from './AdminProducts';
 import AdminCollections from './AdminCollections';
 import AdminTickets from './AdminTickets';
+import AdminAnalytics from './AdminAnalytics';
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: '📊' },
   { id: 'products', label: 'Products', icon: '📦' },
   { id: 'collections', label: 'Collections', icon: '🗂️' },
   { id: 'tickets', label: 'Tickets', icon: '🎫' },
+  { id: 'analytics', label: 'Analytics', icon: '💰' },
 ];
 
 const AdminDashboard = () => {
@@ -87,6 +89,7 @@ const AdminDashboard = () => {
       {activeTab === 'products' && <AdminProducts />}
       {activeTab === 'collections' && <AdminCollections />}
       {activeTab === 'tickets' && <AdminTickets />}
+      {activeTab === 'analytics' && <AdminAnalytics />}
     </main>
   );
 };

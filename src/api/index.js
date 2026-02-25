@@ -83,6 +83,8 @@ export const deleteCollection = (id) =>
 export const fetchAnalyticsOverview = () => request('/analytics/overview');
 export const fetchAnalyticsProducts = () => request('/analytics/products');
 export const fetchRecentOrders = () => request('/analytics/recent-orders');
+export const fetchRevenueAnalytics = () => request('/analytics/revenue');
+export const fetchSalesLogs = () => request('/analytics/sales');
 
 // ─── Store Code ───────────────────────────────────────────
 export const verifyStoreCode = (username, code) =>
