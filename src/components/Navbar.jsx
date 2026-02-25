@@ -147,22 +147,24 @@ const Navbar = ({ username }) => {
             )}
           </div>
 
-          {username && (
+          {isStorePage && username && (
             <span className="hidden sm:inline-block text-red-400 font-mono text-xs border border-red-500/30 px-3 py-1 rounded bg-black/50">
               <span className="text-gray-400 mr-2">User:</span>
               {username}
             </span>
           )}
-          <button
-            onClick={() => setCartOpen(true)}
-            className={`font-pixel text-[10px] sm:text-xs px-3 py-1.5 sm:px-4 sm:py-2 rounded transition-all duration-300 ${
-              justAdded
-                ? 'bg-red-400 text-black shadow-[0_0_20px_rgba(255,0,0,0.6)] scale-110'
-                : 'bg-red-500 text-black hover:bg-white'
-            }`}
-          >
-            CART ({cartCount})
-          </button>
+          {isStorePage && (
+            <button
+              onClick={() => setCartOpen(true)}
+              className={`font-pixel text-[10px] sm:text-xs px-3 py-1.5 sm:px-4 sm:py-2 rounded transition-all duration-300 ${
+                justAdded
+                  ? 'bg-red-400 text-black shadow-[0_0_20px_rgba(255,0,0,0.6)] scale-110'
+                  : 'bg-red-500 text-black hover:bg-white'
+              }`}
+            >
+              CART ({cartCount})
+            </button>
+          )}
         </div>
       </div>
     </nav>

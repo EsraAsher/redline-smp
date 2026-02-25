@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Hero from './components/Hero';
 import Navbar from './components/Navbar';
 import Particles from './components/Particles';
 import ProductSection from './components/ProductSection';
@@ -39,9 +38,7 @@ function StorePage() {
 
   return (
     <main className="relative z-10 w-full">
-      <Hero />
-
-      <div className="space-y-10 sm:space-y-16 md:space-y-20 pb-12 sm:pb-20">
+      <div className="space-y-10 sm:space-y-16 md:space-y-20 pb-12 sm:pb-20 pt-24 sm:pt-28">
         {loading ? (
           <div className="flex items-center justify-center py-32">
             <div className="text-gray-500 font-pixel text-sm animate-pulse">Loading store...</div>

@@ -102,10 +102,10 @@ const AboutPage = () => {
         {/* CTA */}
         <div className="text-center bg-dark-surface border border-red-500/20 rounded-xl p-6 sm:p-8 md:p-10">
           <h2 className="text-lg sm:text-xl font-pixel text-red-400 mb-4">READY TO JOIN?</h2>
-          <p className="text-gray-400 mb-6">Connect to <span className="text-white font-mono font-bold">play.redline.gg</span> and start your adventure today.</p>
+          <p className="text-gray-400 mb-6">Connect to <span className="text-white font-mono font-bold">mc.redlinesmp.fun</span> and start your adventure today.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/"
+              to="/store"
               className="px-8 py-3 bg-red-500/20 border border-red-500 text-red-400 font-pixel text-sm rounded hover:bg-red-500 hover:text-black transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,0,0,0.4)]"
             >
               VISIT STORE

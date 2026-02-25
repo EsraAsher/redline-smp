@@ -191,7 +191,7 @@ const HelpPage = () => {
                 <li className="border-b border-white/5 pb-3">
                   <span className="text-red-400 font-bold">Q:</span> How do I join the server?
                   <br />
-                  <span className="text-gray-500">Connect with: play.redline.gg (Java Edition)</span>
+                  <span className="text-gray-500">Connect with: mc.redlinesmp.fun (Java Edition)</span>
                 </li>
                 <li className="border-b border-white/5 pb-3">
                   <span className="text-red-400 font-bold">Q:</span> When do I receive my rank?

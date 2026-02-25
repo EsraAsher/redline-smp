@@ -5,7 +5,7 @@ const Hero = () => {
   const serverIP = "node-1.zenithcloud.fun:25514";
 
   const handleCopy = () => {
-    navigator.clipboard.writeText('play.redline.gg');
+    navigator.clipboard.writeText('mc.redlinesmp.fun');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -27,7 +27,7 @@ const Hero = () => {
             </svg>
           </div>
           <div className="flex flex-col">
-            <span className="text-white font-bold text-sm tracking-wide">PLAY.REDLINE.GG</span>
+            <span className="text-white font-bold text-sm tracking-wide">MC.REDLINESMP.FUN</span>
             <span className="text-gray-400 text-xs">
               {copied ? 'Copied!' : 'Click to copy'}
             </span>
@@ -57,7 +57,7 @@ const Hero = () => {
                 </svg>
               </div>
               <div className="flex flex-col">
-                <span className="text-white font-bold text-sm">PLAY.REDLINE.GG</span>
+                <span className="text-white font-bold text-sm">MC.REDLINESMP.FUN</span>
                 <span className="text-gray-400 text-xs">{copied ? 'Copied!' : 'Click to copy'}</span>
               </div>
             </div>
