@@ -11,10 +11,10 @@ const Hero = () => {
   };
 
   return (
-    <div className="relative h-[60vh] flex items-center justify-center overflow-hidden">
+    <div className="relative min-h-[45vh] sm:min-h-[50vh] md:h-[60vh] flex items-center justify-center overflow-hidden">
 
       {/* Main hero layout: widgets + logo */}
-      <div className="relative z-10 flex items-center justify-center w-full px-4 mt-16">
+      <div className="relative z-10 flex items-center justify-center w-full px-4 mt-12 sm:mt-16">
 
         {/* Left Widget - Server IP */}
         <div 
@@ -39,9 +39,9 @@ const Hero = () => {
           <img 
             src="https://i.postimg.cc/3JjMvMM7/nobg-logo-hero-sec.png" 
             alt="Redline SMP" 
-            className="w-auto h-57 md:h-62 mx-auto mb-8 animate-pulse drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
+            className="w-auto h-32 sm:h-44 md:h-57 lg:h-62 mx-auto mb-4 sm:mb-8 animate-pulse drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
           />
-          <p className="text-base md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto font-light tracking-wide leading-relaxed text-center">
+          <p className="text-sm sm:text-base md:text-xl text-gray-300 mb-4 sm:mb-8 max-w-2xl mx-auto px-2 font-light tracking-wide leading-relaxed text-center">
             The ultimate survival voyage begins here. In the New World, only the strongest survive—advance your gear and prepare for the revolution.
           </p>
 

@@ -42,7 +42,7 @@ const AdminDashboard = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="font-pixel text-2xl text-red-400 drop-shadow-[0_0_10px_rgba(255,0,0,0.5)]">
+          <h1 className="font-pixel text-lg sm:text-2xl text-red-400 drop-shadow-[0_0_10px_rgba(255,0,0,0.5)]">
             ADMIN PANEL
           </h1>
           <p className="text-gray-500 text-sm mt-1">Welcome, {admin?.username}</p>
@@ -110,14 +110,14 @@ function OverviewTab({ overview, productStats, loading, onRefresh }) {
   return (
     <div className="space-y-8">
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="bg-dark-surface border border-white/10 rounded-xl p-5 hover:border-red-500/30 transition-all"
+            className="bg-dark-surface border border-white/10 rounded-xl p-3 sm:p-5 hover:border-red-500/30 transition-all"
           >
-            <div className="text-2xl mb-2">{stat.icon}</div>
-            <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+            <div className="text-xl sm:text-2xl mb-2">{stat.icon}</div>
+            <div className={`text-lg sm:text-2xl font-bold ${stat.color}`}>{stat.value}</div>
             <div className="text-gray-500 text-xs mt-1">{stat.label}</div>
           </div>
         ))}

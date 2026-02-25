@@ -16,7 +16,7 @@ const ProductCard = ({ id, title, price, features, image }) => {
       <div className="absolute inset-0 bg-linear-to-br from-red-500/5 to-red-900/5 opacity-0 group-hover:opacity-100 transition-opacity" />
       
       {/* Image Area */}
-      <div className="h-48 bg-black/50 flex items-center justify-center relative overflow-hidden">
+      <div className="h-36 sm:h-48 bg-black/50 flex items-center justify-center relative overflow-hidden">
         {image ? (
           <img src={image} alt={title} className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" />
         ) : (
@@ -27,10 +27,10 @@ const ProductCard = ({ id, title, price, features, image }) => {
         </div>
       </div>
 
-      <div className="p-6 relative z-10">
-        <h3 className="text-xl font-bold font-pixel text-white mb-4 group-hover:text-red-400 transition-colors">{title}</h3>
+      <div className="p-4 sm:p-6 relative z-10">
+        <h3 className="text-base sm:text-xl font-bold font-pixel text-white mb-3 sm:mb-4 group-hover:text-red-400 transition-colors">{title}</h3>
         
-        <ul className="space-y-2 mb-6 text-sm text-gray-300">
+        <ul className="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6 text-sm text-gray-300">
           {features.map((feature, idx) => (
             <li key={idx} className="flex items-center">
               <span className="text-red-400 mr-2">›</span> {feature}

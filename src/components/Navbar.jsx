@@ -27,13 +27,13 @@ const Navbar = ({ username }) => {
   }, []);
 
   return (
-    <nav className="fixed w-full z-40 top-0 left-0 p-4 md:p-6">
+    <nav className="fixed w-full z-40 top-0 left-0 p-3 sm:p-4 md:p-6">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <Link to="/">
           <img
             src="https://i.postimg.cc/ZRSXwVzv/logo-nobg-png.png"
             alt="Redline SMP"
-            className="h-10 md:h-12 w-auto object-contain"
+            className="h-8 sm:h-10 md:h-12 w-auto object-contain"
           />
         </Link>
 
@@ -91,7 +91,7 @@ const Navbar = ({ username }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* Mobile MORE button */}
           <div className="relative md:hidden" ref={dropdownRef}>
             <button
@@ -130,7 +130,7 @@ const Navbar = ({ username }) => {
           )}
           <button
             onClick={() => setCartOpen(true)}
-            className={`font-pixel text-xs px-4 py-2 rounded transition-all duration-300 ${
+            className={`font-pixel text-[10px] sm:text-xs px-3 py-1.5 sm:px-4 sm:py-2 rounded transition-all duration-300 ${
               justAdded
                 ? 'bg-red-400 text-black shadow-[0_0_20px_rgba(255,0,0,0.6)] scale-110'
                 : 'bg-red-500 text-black hover:bg-white'

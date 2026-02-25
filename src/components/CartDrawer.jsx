@@ -158,8 +158,8 @@ const CartDrawer = () => {
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-red-500/20">
-          <h2 className="font-pixel text-lg text-red-400 drop-shadow-[0_0_8px_rgba(255,0,0,0.5)]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-red-500/20">
+          <h2 className="font-pixel text-base sm:text-lg text-red-400 drop-shadow-[0_0_8px_rgba(255,0,0,0.5)]">
             Your Basket
           </h2>
           <button
@@ -171,7 +171,7 @@ const CartDrawer = () => {
         </div>
 
         {/* Items */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4 space-y-3 sm:space-y-4 custom-scrollbar">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500">
               <span className="text-4xl mb-4">🛒</span>
@@ -230,7 +230,7 @@ const CartDrawer = () => {
 
         {/* Footer */}
         {items.length > 0 && checkoutStep === 'cart' && (
-          <div className="border-t border-red-500/20 px-6 py-5 space-y-4">
+          <div className="border-t border-red-500/20 px-4 sm:px-6 py-4 sm:py-5 space-y-3 sm:space-y-4">
             {/* Subtotal */}
             <div className="flex justify-between items-center">
               <span className="text-gray-400 font-pixel text-xs">Subtotal</span>
@@ -278,7 +278,7 @@ const CartDrawer = () => {
 
         {/* Details Step — Minecraft username + email */}
         {checkoutStep === 'details' && (
-          <div className="border-t border-red-500/20 px-6 py-5 space-y-4">
+          <div className="border-t border-red-500/20 px-4 sm:px-6 py-4 sm:py-5 space-y-3 sm:space-y-4">
             <button
               onClick={() => setCheckoutStep('cart')}
               className="text-xs text-gray-400 hover:text-white transition-colors"

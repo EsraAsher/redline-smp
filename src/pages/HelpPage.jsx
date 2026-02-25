@@ -22,19 +22,19 @@ const HelpPage = () => {
   };
 
   return (
-    <main className="relative z-10 pt-28 pb-20 px-6 max-w-5xl mx-auto">
+    <main className="relative z-10 pt-20 sm:pt-28 pb-12 sm:pb-20 px-4 sm:px-6 max-w-5xl mx-auto">
         {/* Page Header */}
-        <h1 className="text-4xl md:text-5xl font-pixel text-center text-red-500 drop-shadow-[0_0_15px_rgba(255,0,0,0.5)] mb-4">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-pixel text-center text-red-500 drop-shadow-[0_0_15px_rgba(255,0,0,0.5)] mb-4">
           HELP CENTER
         </h1>
-        <p className="text-gray-400 text-center mb-16 max-w-xl mx-auto">
+        <p className="text-gray-400 text-center mb-8 sm:mb-12 md:mb-16 max-w-xl mx-auto">
           Need help? Submit a ticket or reach out to us directly.
         </p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12">
           {/* Ticket Generator */}
-          <div className="bg-dark-surface border border-red-500/20 rounded-xl p-8">
-            <h2 className="text-xl font-pixel text-red-400 mb-6 flex items-center gap-3">
+          <div className="bg-dark-surface border border-red-500/20 rounded-xl p-5 sm:p-8">
+            <h2 className="text-base sm:text-xl font-pixel text-red-400 mb-4 sm:mb-6 flex items-center gap-3">
               <span className="text-2xl">🎫</span> SUBMIT A TICKET
             </h2>
 
@@ -111,7 +111,7 @@ const HelpPage = () => {
               href="https://discord.gg/wBNMMj2PE4"
               target="_blank"
               rel="noopener noreferrer"
-              className="block bg-dark-surface border border-red-500/20 rounded-xl p-8 hover:border-red-500/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,0,0,0.15)] group"
+              className="block bg-dark-surface border border-red-500/20 rounded-xl p-5 sm:p-8 hover:border-red-500/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,0,0,0.15)] group"
             >
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-14 h-14 bg-[#5865F2] rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
@@ -120,7 +120,7 @@ const HelpPage = () => {
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-xl font-pixel text-red-400">DISCORD</h2>
+                  <h2 className="text-base sm:text-xl font-pixel text-red-400">DISCORD</h2>
                   <p className="text-gray-400 text-sm">Join our community server</p>
                 </div>
               </div>
@@ -133,13 +133,13 @@ const HelpPage = () => {
             </a>
 
             {/* Email Card */}
-            <div className="bg-dark-surface border border-red-500/20 rounded-xl p-8">
+            <div className="bg-dark-surface border border-red-500/20 rounded-xl p-5 sm:p-8">
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-14 h-14 bg-red-500/20 border border-red-500/40 rounded-full flex items-center justify-center shrink-0">
                   <span className="text-2xl">📧</span>
                 </div>
                 <div>
-                  <h2 className="text-xl font-pixel text-red-400">EMAIL US</h2>
+                  <h2 className="text-base sm:text-xl font-pixel text-red-400">EMAIL US</h2>
                   <p className="text-gray-400 text-sm">For business or formal inquiries</p>
                 </div>
               </div>
@@ -155,13 +155,13 @@ const HelpPage = () => {
             </div>
 
             {/* FAQ Preview */}
-            <div className="bg-dark-surface border border-red-500/20 rounded-xl p-8">
+            <div className="bg-dark-surface border border-red-500/20 rounded-xl p-5 sm:p-8">
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-14 h-14 bg-red-500/20 border border-red-500/40 rounded-full flex items-center justify-center shrink-0">
                   <span className="text-2xl">❓</span>
                 </div>
                 <div>
-                  <h2 className="text-xl font-pixel text-red-400">QUICK FAQ</h2>
+                  <h2 className="text-base sm:text-xl font-pixel text-red-400">QUICK FAQ</h2>
                   <p className="text-gray-400 text-sm">Common questions answered</p>
                 </div>
               </div>

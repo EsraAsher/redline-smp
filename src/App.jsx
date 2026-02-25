@@ -38,7 +38,7 @@ function HomePage() {
     <main className="relative z-10 w-full">
       <Hero />
 
-      <div className="space-y-20 pb-20">
+      <div className="space-y-10 sm:space-y-16 md:space-y-20 pb-12 sm:pb-20">
         {loading ? (
           <div className="flex items-center justify-center py-32">
             <div className="text-gray-500 font-pixel text-sm animate-pulse">Loading store...</div>
@@ -61,7 +61,7 @@ function HomePage() {
         )}
       </div>
 
-      <footer className="py-12 border-t border-white/10 mt-20 text-center text-gray-500 text-sm">
+      <footer className="py-8 sm:py-12 border-t border-white/10 mt-12 sm:mt-20 text-center text-gray-500 text-xs sm:text-sm px-4">
         &copy; 2026 Redline SMP. Not affiliated with Mojang AB or Microsoft.
       </footer>
     </main>

@@ -25,8 +25,8 @@ const UsernameModal = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="bg-dark-surface border-2 border-neon-purple p-8 rounded-lg shadow-[0_0_20px_rgba(176,38,255,0.5)] max-w-md w-full relative animate-bounce-in">
-        <h2 className="text-2xl font-pixel text-neon-cyan mb-6 text-center">Enter Username</h2>
+      <div className="bg-dark-surface border-2 border-neon-purple p-5 sm:p-8 rounded-lg shadow-[0_0_20px_rgba(176,38,255,0.5)] max-w-md w-full mx-4 relative animate-bounce-in">
+        <h2 className="text-xl sm:text-2xl font-pixel text-neon-cyan mb-4 sm:mb-6 text-center">Enter Username</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-gray-400 mb-2 font-pixel text-xs">Minecraft Username</label>
