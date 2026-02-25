@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { createPaymentOrder, verifyStoreCode } from '../api/index.js';
 
@@ -256,7 +257,7 @@ const CartDrawer = () => {
                 className="mt-0.5 accent-red-500 w-4 h-4 cursor-pointer"
               />
               <span className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors leading-tight">
-                I agree to the <a href="#" className="text-red-400 underline hover:text-red-300">Terms &amp; Conditions</a> and understand all purchases are final.
+                I agree to the <Link to="/terms" onClick={() => setCartOpen(false)} className="text-red-400 underline hover:text-red-300">Terms &amp; Conditions</Link> and understand all purchases are final.
               </span>
             </label>
 

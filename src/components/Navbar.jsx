@@ -6,8 +6,17 @@ import { fetchCollections } from '../api';
 const Navbar = ({ username }) => {
   const [moreOpen, setMoreOpen] = useState(false);
   const [collections, setCollections] = useState([]);
-  const dropdownRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
+  const desktopDropdownRef = useRef(null);
+  const mobileDropdownRef = useRef(null);
   const { cartCount, setCartOpen, justAdded } = useCart();
+
+  // Scroll detection for blur effect
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     fetchCollections()
@@ -18,16 +27,18 @@ const Navbar = ({ username }) => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setMoreOpen(false);
-      }
+      if (
+        (desktopDropdownRef.current && desktopDropdownRef.current.contains(e.target)) ||
+        (mobileDropdownRef.current && mobileDropdownRef.current.contains(e.target))
+      ) return;
+      setMoreOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   return (
-    <nav className="fixed w-full z-40 top-0 left-0 p-3 sm:p-4 md:p-6">
+    <nav className={`fixed w-full z-40 top-0 left-0 p-3 sm:p-4 md:p-6 transition-all duration-300 ${scrolled ? 'bg-dark-bg/70 backdrop-blur-md shadow-[0_2px_20px_rgba(0,0,0,0.5)]' : 'bg-transparent'}`}>
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <Link to="/">
           <img
@@ -50,7 +61,7 @@ const Navbar = ({ username }) => {
 
           {/* MORE dropdown - hover on desktop */}
           <div
-            ref={dropdownRef}
+            ref={desktopDropdownRef}
             className="relative"
             onMouseEnter={() => setMoreOpen(true)}
             onMouseLeave={() => setMoreOpen(false)}
@@ -93,7 +104,7 @@ const Navbar = ({ username }) => {
 
         <div className="flex items-center gap-2 sm:gap-4">
           {/* Mobile MORE button */}
-          <div className="relative md:hidden" ref={dropdownRef}>
+          <div className="relative md:hidden" ref={mobileDropdownRef}>
             <button
               onClick={() => setMoreOpen(!moreOpen)}
               className="font-pixel text-xs text-gray-300 hover:text-red-400 transition-colors"

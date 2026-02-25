@@ -18,7 +18,7 @@ const ProductCard = ({ id, title, price, features, image }) => {
       {/* Image Area */}
       <div className="h-36 sm:h-48 bg-black/50 flex items-center justify-center relative overflow-hidden">
         {image ? (
-          <img src={image} alt={title} className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" />
+          <img src={image} alt={title} className="object-cover w-full h-full" />
         ) : (
           <div className="text-red-400 font-pixel text-4xl opacity-50">?</div>
         )}

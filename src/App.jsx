@@ -14,6 +14,7 @@ import AboutPage from './pages/AboutPage';
 import CollectionPage from './pages/CollectionPage';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import TermsPage from './pages/TermsPage';
 
 function HomePage() {
   const [sections, setSections] = useState([]);
@@ -98,6 +99,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route path="/collection/:slug" element={<CollectionPage />} />
 
               {/* Hidden admin route */}
