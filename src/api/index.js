@@ -102,3 +102,18 @@ export const createPaymentOrder = (mcUsername, email, items, storeCode) =>
 // Only Razorpay webhook can mark orders as paid.
 
 export const getOrderStatus = (orderId) => request(`/payments/order/${orderId}`);
+
+// ─── Support Tickets ──────────────────────────────────────
+export const createTicket = (email, category, message) =>
+  request('/tickets/create', {
+    method: 'POST',
+    body: JSON.stringify({ email, category, message }),
+  });
+
+export const fetchAdminTickets = () => request('/tickets/admin');
+
+export const updateTicketStatus = (id, status) =>
+  request(`/tickets/admin/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });

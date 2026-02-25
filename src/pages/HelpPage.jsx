@@ -1,24 +1,43 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { createTicket } from '../api';
+
+const CATEGORIES = [
+  'Payment Issue',
+  'Missing Items',
+  'Account Problem',
+  'Bug Report',
+  'General Question',
+  'Other',
+];
 
 const HelpPage = () => {
   const [ticket, setTicket] = useState({
-    username: '',
     email: '',
-    subject: '',
-    description: '',
+    category: '',
+    message: '',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     setTicket({ ...ticket, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
-    setTicket({ username: '', email: '', subject: '', description: '' });
+    setSubmitting(true);
+    setError('');
+    try {
+      await createTicket(ticket.email.trim(), ticket.category, ticket.message.trim());
+      setSubmitted(true);
+      setTicket({ email: '', category: '', message: '' });
+    } catch (err) {
+      setError(err.message || 'Failed to submit ticket.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -42,24 +61,18 @@ const HelpPage = () => {
               <div className="text-center py-12">
                 <div className="text-5xl mb-4">✅</div>
                 <p className="font-pixel text-sm text-green-400 mb-2">TICKET SUBMITTED!</p>
-                <p className="text-gray-400 text-sm">We'll get back to you shortly.</p>
+                <p className="text-gray-400 text-sm">We'll get back to you via email shortly.</p>
+                <button
+                  onClick={() => setSubmitted(false)}
+                  className="mt-4 text-xs text-red-400 hover:text-red-300 underline underline-offset-2 transition-colors"
+                >
+                  Submit another ticket
+                </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-gray-400 text-xs font-pixel mb-2">MINECRAFT USERNAME</label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={ticket.username}
-                    onChange={handleChange}
-                    required
-                    className="w-full bg-black/50 border border-red-500/30 rounded p-3 text-white focus:outline-none focus:border-red-500 focus:shadow-[0_0_10px_rgba(255,0,0,0.2)] transition-all font-mono text-sm"
-                    placeholder="Steve"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-xs font-pixel mb-2">EMAIL</label>
+                  <label className="block text-gray-400 text-xs font-pixel mb-2">EMAIL *</label>
                   <input
                     type="email"
                     name="email"
@@ -71,22 +84,25 @@ const HelpPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-xs font-pixel mb-2">SUBJECT</label>
-                  <input
-                    type="text"
-                    name="subject"
-                    value={ticket.subject}
+                  <label className="block text-gray-400 text-xs font-pixel mb-2">CATEGORY *</label>
+                  <select
+                    name="category"
+                    value={ticket.category}
                     onChange={handleChange}
                     required
-                    className="w-full bg-black/50 border border-red-500/30 rounded p-3 text-white focus:outline-none focus:border-red-500 focus:shadow-[0_0_10px_rgba(255,0,0,0.2)] transition-all font-mono text-sm"
-                    placeholder="What do you need help with?"
-                  />
+                    className="w-full bg-black/50 border border-red-500/30 rounded p-3 text-white focus:outline-none focus:border-red-500 focus:shadow-[0_0_10px_rgba(255,0,0,0.2)] transition-all text-sm"
+                  >
+                    <option value="" disabled>Select a category...</option>
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-xs font-pixel mb-2">DESCRIPTION</label>
+                  <label className="block text-gray-400 text-xs font-pixel mb-2">MESSAGE *</label>
                   <textarea
-                    name="description"
-                    value={ticket.description}
+                    name="message"
+                    value={ticket.message}
                     onChange={handleChange}
                     required
                     rows={5}
@@ -94,11 +110,17 @@ const HelpPage = () => {
                     placeholder="Describe your issue in detail..."
                   />
                 </div>
+
+                {error && (
+                  <p className="text-xs text-red-400 text-center">{error}</p>
+                )}
+
                 <button
                   type="submit"
-                  className="w-full py-3 bg-red-500/20 border border-red-500 text-red-400 font-pixel text-sm rounded hover:bg-red-500 hover:text-black transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,0,0,0.4)]"
+                  disabled={submitting}
+                  className="w-full py-3 bg-red-500/20 border border-red-500 text-red-400 font-pixel text-sm rounded hover:bg-red-500 hover:text-black transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,0,0,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  SUBMIT TICKET
+                  {submitting ? 'SUBMITTING...' : 'SUBMIT TICKET'}
                 </button>
               </form>
             )}
