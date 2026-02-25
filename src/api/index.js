@@ -119,3 +119,19 @@ export const updateTicketStatus = (id, status) =>
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
+
+// ─── Voting Sites ─────────────────────────────────────────
+export const fetchVotingSites = () => request('/voting');
+export const fetchAllVotingSites = () => request('/voting/admin/all');
+
+export const createVotingSite = (data) =>
+  request('/voting', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateVotingSite = (id, data) =>
+  request(`/voting/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const toggleVotingSite = (id) =>
+  request(`/voting/${id}/toggle`, { method: 'PATCH' });
+
+export const deleteVotingSite = (id) =>
+  request(`/voting/${id}`, { method: 'DELETE' });

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { fetchCollections } from '../api';
 
@@ -10,6 +10,10 @@ const Navbar = ({ username }) => {
   const desktopDropdownRef = useRef(null);
   const mobileDropdownRef = useRef(null);
   const { cartCount, setCartOpen, justAdded } = useCart();
+  const location = useLocation();
+
+  // Check if we're on the store or a store-related page
+  const isStorePage = location.pathname === '/store' || location.pathname.startsWith('/collection/');
 
   // Scroll detection for blur effect
   useEffect(() => {
@@ -49,7 +53,11 @@ const Navbar = ({ username }) => {
         </Link>
 
         <div className="hidden md:flex gap-8 font-pixel text-xs text-gray-300 items-center">
-          {collections.map((col) => (
+          <Link to="/store" className="hover:text-red-400 transition-colors">STORE</Link>
+          <Link to="/vote" className="hover:text-red-400 transition-colors">VOTE</Link>
+
+          {/* Collections shown only on store pages */}
+          {isStorePage && collections.map((col) => (
             <Link
               key={col._id}
               to={`/collection/${col.slug}`}
@@ -113,6 +121,12 @@ const Navbar = ({ username }) => {
             </button>
             {moreOpen && (
               <div className="absolute top-full right-0 mt-3 w-48 bg-dark-surface border border-red-500/30 rounded-lg shadow-[0_0_20px_rgba(255,0,0,0.15)] overflow-hidden">
+                <Link to="/store" className="block px-5 py-3 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-xs border-b border-white/5" onClick={() => setMoreOpen(false)}>
+                  🛒 STORE
+                </Link>
+                <Link to="/vote" className="block px-5 py-3 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-xs border-b border-white/5" onClick={() => setMoreOpen(false)}>
+                  🗳️ VOTE
+                </Link>
                 {collections.map((col) => (
                   <Link
                     key={col._id}

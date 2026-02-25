@@ -10,6 +10,7 @@ import paymentRoutes from './routes/payments.js';
 import storeCodeRoutes from './routes/storecode.js';
 import rewardsRoutes from './routes/rewards.js';
 import ticketRoutes from './routes/tickets.js';
+import votingRoutes from './routes/voting.js';
 
 dotenv.config();
 
@@ -22,6 +23,8 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'https://store.redlinesmp.fun',
+  'https://redlinesmp.fun',
+  'https://www.redlinesmp.fun',
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -54,6 +57,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/storecode', storeCodeRoutes);
 app.use('/api/rewards', rewardsRoutes);
 app.use('/api/tickets', ticketRoutes);
+app.use('/api/voting', votingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

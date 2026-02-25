@@ -9,14 +9,16 @@ import CartDrawer from './components/CartDrawer';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { fetchHomepageProducts } from './api';
+import LandingPage from './pages/LandingPage';
 import HelpPage from './pages/HelpPage';
 import AboutPage from './pages/AboutPage';
 import CollectionPage from './pages/CollectionPage';
+import VotePage from './pages/VotePage';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import TermsPage from './pages/TermsPage';
 
-function HomePage() {
+function StorePage() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -96,7 +98,9 @@ function App() {
             <Navbar username={username} />
 
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/store" element={<StorePage />} />
+              <Route path="/vote" element={<VotePage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/terms" element={<TermsPage />} />

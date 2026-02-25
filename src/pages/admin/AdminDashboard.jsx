@@ -5,6 +5,7 @@ import AdminProducts from './AdminProducts';
 import AdminCollections from './AdminCollections';
 import AdminTickets from './AdminTickets';
 import AdminAnalytics from './AdminAnalytics';
+import AdminVotingLinks from './AdminVotingLinks';
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: '📊' },
@@ -12,6 +13,7 @@ const tabs = [
   { id: 'collections', label: 'Collections', icon: '🗂️' },
   { id: 'tickets', label: 'Tickets', icon: '🎫' },
   { id: 'analytics', label: 'Analytics', icon: '💰' },
+  { id: 'voting', label: 'Voting Links', icon: '🗳️' },
 ];
 
 const AdminDashboard = () => {
@@ -90,6 +92,7 @@ const AdminDashboard = () => {
       {activeTab === 'collections' && <AdminCollections />}
       {activeTab === 'tickets' && <AdminTickets />}
       {activeTab === 'analytics' && <AdminAnalytics />}
+      {activeTab === 'voting' && <AdminVotingLinks />}
     </main>
   );
 };
