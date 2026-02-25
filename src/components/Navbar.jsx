@@ -7,7 +7,6 @@ const Navbar = ({ username }) => {
   const [moreOpen, setMoreOpen] = useState(false);
   const [collections, setCollections] = useState([]);
   const [scrolled, setScrolled] = useState(false);
-  const desktopDropdownRef = useRef(null);
   const mobileDropdownRef = useRef(null);
   const { cartCount, setCartOpen, justAdded } = useCart();
   const location = useLocation();
@@ -31,10 +30,7 @@ const Navbar = ({ username }) => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (
-        (desktopDropdownRef.current && desktopDropdownRef.current.contains(e.target)) ||
-        (mobileDropdownRef.current && mobileDropdownRef.current.contains(e.target))
-      ) return;
+      if (mobileDropdownRef.current && mobileDropdownRef.current.contains(e.target)) return;
       setMoreOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -54,7 +50,7 @@ const Navbar = ({ username }) => {
 
         <div className="hidden md:flex gap-8 font-pixel text-xs text-gray-300 items-center">
           <Link to="/store" className="hover:text-red-400 transition-colors">STORE</Link>
-          <Link to="/vote" className="hover:text-red-400 transition-colors">VOTE</Link>
+          <Link to="/vote" className="hover:text-red-400 transition-colors">VOTE US</Link>
 
           {/* Collections shown only on store pages */}
           {isStorePage && collections.map((col) => (
@@ -67,80 +63,42 @@ const Navbar = ({ username }) => {
             </Link>
           ))}
 
-          {/* MORE dropdown - hover on desktop */}
-          <div
-            ref={desktopDropdownRef}
-            className="relative"
-            onMouseEnter={() => setMoreOpen(true)}
-            onMouseLeave={() => setMoreOpen(false)}
-          >
-            <button
-              onClick={() => setMoreOpen(!moreOpen)}
-              className="hover:text-red-400 transition-colors flex items-center gap-1"
-            >
-              MORE
-              <svg
-                className={`w-3 h-3 transition-transform duration-200 ${moreOpen ? 'rotate-180' : ''}`}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {moreOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-44">
-                <div className="bg-dark-surface border border-red-500/30 rounded-lg shadow-[0_0_20px_rgba(255,0,0,0.15)] overflow-hidden">
-                <Link
-                  to="/help"
-                  className="block px-5 py-3 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-xs border-b border-white/5"
-                  onClick={() => setMoreOpen(false)}
-                >
-                  🎫 HELP
-                </Link>
-                <Link
-                  to="/about"
-                  className="block px-5 py-3 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-xs"
-                  onClick={() => setMoreOpen(false)}
-                >
-                  ℹ️ ABOUT US
-                </Link>
-                </div>
-              </div>
-            )}
-          </div>
+          <Link to="/help" className="hover:text-red-400 transition-colors">HELP</Link>
+          <Link to="/about" className="hover:text-red-400 transition-colors">ABOUT US</Link>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
-          {/* Mobile MORE button */}
+          {/* Mobile MENU button */}
           <div className="relative md:hidden" ref={mobileDropdownRef}>
             <button
               onClick={() => setMoreOpen(!moreOpen)}
-              className="font-pixel text-xs text-gray-300 hover:text-red-400 transition-colors"
+              className="font-pixel text-sm text-gray-300 hover:text-red-400 transition-colors flex items-center gap-2"
             >
-              MENU ☰
+              <span>MENU</span>
+              <span className="text-base leading-none">☰</span>
             </button>
             {moreOpen && (
-              <div className="absolute top-full right-0 mt-3 w-48 bg-dark-surface border border-red-500/30 rounded-lg shadow-[0_0_20px_rgba(255,0,0,0.15)] overflow-hidden">
-                <Link to="/store" className="block px-5 py-3 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-xs border-b border-white/5" onClick={() => setMoreOpen(false)}>
+              <div className="absolute top-full right-0 mt-3 w-52 bg-dark-surface border border-red-500/30 rounded-lg shadow-[0_0_20px_rgba(255,0,0,0.15)] overflow-hidden">
+                <Link to="/store" className="block px-6 py-3.5 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-sm border-b border-white/5" onClick={() => setMoreOpen(false)}>
                   🛒 STORE
                 </Link>
-                <Link to="/vote" className="block px-5 py-3 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-xs border-b border-white/5" onClick={() => setMoreOpen(false)}>
-                  🗳️ VOTE
+                <Link to="/vote" className="block px-6 py-3.5 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-sm border-b border-white/5" onClick={() => setMoreOpen(false)}>
+                  🗳️ VOTE US
                 </Link>
                 {collections.map((col) => (
                   <Link
                     key={col._id}
                     to={`/collection/${col.slug}`}
-                    className="block px-5 py-3 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-xs border-b border-white/5"
+                    className="block px-6 py-3.5 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-sm border-b border-white/5"
                     onClick={() => setMoreOpen(false)}
                   >
                     {col.name.toUpperCase()}
                   </Link>
                 ))}
-                <Link to="/help" className="block px-5 py-3 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-xs border-b border-white/5" onClick={() => setMoreOpen(false)}>
+                <Link to="/help" className="block px-6 py-3.5 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-sm border-b border-white/5" onClick={() => setMoreOpen(false)}>
                   🎫 HELP
                 </Link>
-                <Link to="/about" className="block px-5 py-3 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-xs" onClick={() => setMoreOpen(false)}>
+                <Link to="/about" className="block px-6 py-3.5 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-sm" onClick={() => setMoreOpen(false)}>
                   ℹ️ ABOUT US
                 </Link>
               </div>

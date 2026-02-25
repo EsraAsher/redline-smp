@@ -106,12 +106,28 @@ const LandingPage = () => {
         </div>
       </div>
 
+      {/* ═══════════════════ CTA BUTTONS ═══════════════════ */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pb-8 sm:pb-10 px-4">
+        <Link
+          to="/store"
+          className="px-8 py-3.5 bg-red-600 text-white font-pixel text-sm rounded-lg hover:bg-red-500 shadow-[0_0_25px_rgba(255,0,0,0.3)] hover:shadow-[0_0_40px_rgba(255,0,0,0.5)] transition-all duration-300"
+        >
+          ENTER STORE
+        </Link>
+        <Link
+          to="/vote"
+          className="px-8 py-3.5 bg-white/5 border border-white/20 text-white font-pixel text-sm rounded-lg hover:bg-white/10 hover:border-white/30 transition-all duration-300"
+        >
+          VOTE &amp; EARN REWARDS
+        </Link>
+      </div>
+
       {/* ═══════════════════ HOW TO BUY (tutorial) ═══════════════════ */}
       <section className="py-12 sm:py-16 px-4 border-t border-white/5">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-8">
             <h2 className="font-pixel text-sm sm:text-base text-red-400 mb-3">HOW TO BUY</h2>
-            <p className="text-gray-500 text-sm">Watch the tutorial to get started on Redline SMP.</p>
+            <p className="text-gray-500 text-sm">Watch the video for buying guide and tutorial.</p>
           </div>
 
           <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
