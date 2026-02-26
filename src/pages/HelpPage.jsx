@@ -178,10 +178,10 @@ const HelpPage = () => {
                 </div>
               </div>
               <a
-                href="mailto:support@redlinesmp.com"
+                href="mailto:support@redlinesmp.fun"
                 className="block mt-2 text-lg font-mono text-white hover:text-red-400 transition-colors break-all"
               >
-                support@redlinesmp.com
+                support@redlinesmp.fun
               </a>
               <p className="text-gray-500 text-xs mt-3">
                 Expect a response within 24-48 hours.

@@ -230,10 +230,9 @@ const Navbar = ({ username }) => {
           <div className="relative md:hidden" ref={mobileDropdownRef}>
             <button
               onClick={() => setMoreOpen(!moreOpen)}
-              className="font-pixel text-sm text-gray-300 hover:text-red-400 transition-colors flex items-center gap-2"
+              className="font-pixel text-sm text-gray-300 hover:text-red-400 transition-colors"
             >
               <span>MENU</span>
-              <span className="text-base leading-none">☰</span>
             </button>
             {moreOpen && (
               <div className="absolute top-full right-0 mt-3 w-52 bg-dark-surface border border-red-500/30 rounded-lg shadow-[0_0_20px_rgba(255,0,0,0.15)] overflow-hidden">
