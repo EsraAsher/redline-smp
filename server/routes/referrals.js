@@ -1,11 +1,22 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import ReferralApplication from '../models/ReferralApplication.js';
 import ReferralPartner from '../models/ReferralPartner.js';
+import CommissionAdjustment from '../models/CommissionAdjustment.js';
 import authMiddleware from '../middleware/auth.js';
 import { sendMail, referralApplicationReceivedHTML, referralApplicationAdminHTML, referralApprovedHTML, referralRejectedHTML } from '../utils/mailer.js';
 import { sendDiscordWebhook, referralApplicationEmbed, referralApprovedEmbed, referralRejectedEmbed } from '../utils/discord.js';
 
 const router = Router();
+
+// ─── Rate limiter for applications (S4) ─────────────────
+const applyLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many applications. Please try again later.' },
+});
 
 // ─── Helper: auto-generate a unique referral code ─────────
 async function generateUniqueCode(baseName) {
@@ -28,7 +39,7 @@ async function generateUniqueCode(baseName) {
 // PUBLIC — Creator submits application
 // POST /api/referrals/apply
 // ═══════════════════════════════════════════════════════════
-router.post('/apply', async (req, res) => {
+router.post('/apply', applyLimiter, async (req, res) => {
   try {
     const { creatorName, email, minecraftUsername, discordId, channelLink, description } = req.body;
 
@@ -265,6 +276,142 @@ router.patch('/admin/:id/reject', authMiddleware, async (req, res) => {
     res.json({ message: 'Application rejected.', application });
   } catch (err) {
     console.error('[Referrals] Reject error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN — Update partner settings (S3)
+// PATCH /api/referrals/admin/partner/:id/update
+// ═══════════════════════════════════════════════════════════
+router.patch('/admin/partner/:id/update', authMiddleware, async (req, res) => {
+  try {
+    const { discountPercent, commissionPercent, maxUses, expiresAt, referralCode } = req.body;
+    const partner = await ReferralPartner.findById(req.params.id);
+    if (!partner) return res.status(404).json({ message: 'Partner not found.' });
+
+    if (discountPercent !== undefined) partner.discountPercent = Math.min(100, Math.max(0, Number(discountPercent)));
+    if (commissionPercent !== undefined) partner.commissionPercent = Math.min(100, Math.max(0, Number(commissionPercent)));
+    if (maxUses !== undefined) partner.maxUses = maxUses === null || maxUses === '' ? null : Math.max(0, Number(maxUses));
+    if (expiresAt !== undefined) partner.expiresAt = expiresAt || null;
+
+    // Regenerate / change referral code
+    if (referralCode && referralCode.trim()) {
+      const newCode = referralCode.trim().toUpperCase();
+      if (newCode !== partner.referralCode) {
+        const exists = await ReferralPartner.findOne({ referralCode: newCode, _id: { $ne: partner._id } });
+        if (exists) return res.status(409).json({ message: `Code "${newCode}" is already in use.` });
+        partner.referralCode = newCode;
+      }
+    }
+
+    await partner.save();
+    res.json({ message: 'Partner updated.', partner });
+  } catch (err) {
+    console.error('[Referrals] Update partner error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN — Change partner status (S3)
+// PATCH /api/referrals/admin/partner/:id/status
+// ═══════════════════════════════════════════════════════════
+router.patch('/admin/partner/:id/status', authMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['active', 'paused', 'banned'].includes(status)) {
+      return res.status(400).json({ message: 'Status must be active, paused, or banned.' });
+    }
+
+    const partner = await ReferralPartner.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    if (!partner) return res.status(404).json({ message: 'Partner not found.' });
+
+    res.json({ message: `Partner status changed to ${status}.`, partner });
+  } catch (err) {
+    console.error('[Referrals] Status change error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN — Adjust pending commission manually with audit (S3)
+// PATCH /api/referrals/admin/partner/:id/adjust-commission
+// ═══════════════════════════════════════════════════════════
+router.patch('/admin/partner/:id/adjust-commission', authMiddleware, async (req, res) => {
+  try {
+    const { amount, note } = req.body;
+    const adjustAmount = Number(amount);
+    if (!Number.isFinite(adjustAmount) || adjustAmount === 0) {
+      return res.status(400).json({ message: 'Amount must be a non-zero number.' });
+    }
+
+    const partner = await ReferralPartner.findById(req.params.id);
+    if (!partner) return res.status(404).json({ message: 'Partner not found.' });
+
+    const previousBalance = partner.pendingCommission;
+    const newBalance = Math.max(0, Math.round((previousBalance + adjustAmount) * 100) / 100);
+
+    partner.pendingCommission = newBalance;
+    if (adjustAmount > 0) {
+      partner.totalCommissionEarned = Math.round((partner.totalCommissionEarned + adjustAmount) * 100) / 100;
+    }
+    await partner.save();
+
+    // Audit log
+    await CommissionAdjustment.create({
+      partnerId: partner._id,
+      amount: adjustAmount,
+      previousBalance,
+      newBalance: partner.pendingCommission,
+      note: note?.trim() || '',
+      adjustedBy: req.admin._id,
+    });
+
+    console.log(`[Referrals] Commission adjusted for ${partner.creatorName}: ₹${previousBalance} → ₹${partner.pendingCommission} (${adjustAmount > 0 ? '+' : ''}${adjustAmount}) by ${req.admin.username}`);
+
+    res.json({
+      message: `Commission adjusted: ₹${previousBalance} → ₹${partner.pendingCommission}`,
+      partner,
+    });
+  } catch (err) {
+    console.error('[Referrals] Adjust commission error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN — Referral analytics summary (S7)
+// GET /api/referrals/admin/analytics
+// ═══════════════════════════════════════════════════════════
+router.get('/admin/analytics', authMiddleware, async (req, res) => {
+  try {
+    const [totals] = await ReferralPartner.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalPartners: { $sum: 1 },
+          activePartners: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } },
+          totalRevenueGenerated: { $sum: '$totalRevenueGenerated' },
+          totalCommissionLiability: { $sum: '$pendingCommission' },
+          totalCommissionPaid: { $sum: '$totalPaidOut' },
+        },
+      },
+    ]);
+
+    res.json(totals || {
+      totalPartners: 0,
+      activePartners: 0,
+      totalRevenueGenerated: 0,
+      totalCommissionLiability: 0,
+      totalCommissionPaid: 0,
+    });
+  } catch (err) {
+    console.error('[Referrals] Analytics error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });

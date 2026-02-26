@@ -90,8 +90,7 @@ const referralPartnerSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-// Indexes
-referralPartnerSchema.index({ referralCode: 1 });
+// Indexes (referralCode unique index is auto-created by schema unique:true)
 referralPartnerSchema.index({ status: 1 });
 referralPartnerSchema.index({ discordId: 1 });
 

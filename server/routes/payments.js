@@ -9,13 +9,24 @@
  */
 import { Router } from 'express';
 import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
 import Razorpay from 'razorpay';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import StoreCode from '../models/StoreCode.js';
 import ReferralPartner from '../models/ReferralPartner.js';
+import ReferralFraudLog from '../models/ReferralFraudLog.js';
 
 const router = Router();
+
+// ─── Rate limiter for checkout (S4) ──────────────────
+const checkoutLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many checkout attempts. Please try again in a minute.' },
+});
 
 // ─── Razorpay instance ────────────────────────────────────
 function getRazorpay() {
@@ -28,7 +39,7 @@ function getRazorpay() {
 }
 
 // ─── 1. Create Razorpay Order ─────────────────────────────
-router.post('/create-order', async (req, res) => {
+router.post('/create-order', checkoutLimiter, async (req, res) => {
   try {
     const { mcUsername, email, items, storeCode, referralCode } = req.body;
 
@@ -111,6 +122,8 @@ router.post('/create-order', async (req, res) => {
 
       // Prevent self-use: buyer's mcUsername must not match creator's
       if (partner.minecraftUsername && mcUsername.trim().toLowerCase() === partner.minecraftUsername.trim().toLowerCase()) {
+        // Fraud log: self-use attempt (non-blocking)
+        ReferralFraudLog.create({ referralCode: code, type: 'self_use', metadata: { ip: req.ip, mcUsername: mcUsername.trim(), partnerCreatorName: partner.creatorName } }).catch(() => {});
         return res.status(400).json({ message: 'You cannot use your own referral code.' });
       }
 
@@ -130,7 +143,10 @@ router.post('/create-order', async (req, res) => {
       if (total < 1) total = 1; // Razorpay minimum ₹1
     }
     // ── End referral validation ─────────────────────────────
-
+    // Non-blocking fraud monitoring (S5)
+    if (referralSnapshot) {
+      logReferralFraudCheck(req.ip, email, referralSnapshot.referralCodeUsed).catch(() => {});
+    }
     // Create Razorpay order (amount in smallest unit — paise for INR)
     const rz = getRazorpay();
     const rzOrder = await rz.orders.create({
@@ -334,12 +350,25 @@ async function trackReferralCommission(order) {
     // Guard: skip refunded / failed orders
     if (order.status === 'refunded' || order.status === 'failed') return;
 
-    // Calculate commission from the snapshot stored at checkout
+    // Fetch fresh partner data for race-condition-safe maxUses enforcement (S6)
+    const partner = await ReferralPartner.findById(order.referralCreatorId);
+    if (!partner) {
+      console.warn(`[Referral] Partner ${order.referralCreatorId} not found — skipping commission for order ${order._id}`);
+      return;
+    }
+
+    // Calculate commission from final paid amount (order.total = discounted amount)
     const commission = Math.round(order.total * (order.referralCommissionSnapshot / 100) * 100) / 100;
 
+    // Build atomic filter with maxUses guard to prevent race conditions (S6)
+    const filter = { _id: order.referralCreatorId };
+    if (partner.maxUses !== null) {
+      filter.totalUses = { $lt: partner.maxUses };
+    }
+
     // Atomically update the referral partner's tracking counters
-    const updated = await ReferralPartner.findByIdAndUpdate(
-      order.referralCreatorId,
+    const updated = await ReferralPartner.findOneAndUpdate(
+      filter,
       {
         $inc: {
           totalUses: 1,
@@ -352,7 +381,9 @@ async function trackReferralCommission(order) {
     );
 
     if (!updated) {
-      console.warn(`[Referral] Partner ${order.referralCreatorId} not found — skipping commission for order ${order._id}`);
+      console.log(`[Referral] Code ${order.referralCodeUsed} hit maxUses cap — commission skipped for order ${order._id}`);
+      order.referralTracked = true;
+      await order.save();
       return;
     }
 
@@ -364,6 +395,57 @@ async function trackReferralCommission(order) {
   } catch (err) {
     // Non-fatal: log but don't break the webhook response
     console.error('[Referral] Commission tracking error:', err.message);
+  }
+}
+
+/**
+ * Non-blocking fraud monitoring for referral code usage (S5).
+ * Logs a 'code_usage' entry and checks for suspicious patterns.
+ */
+async function logReferralFraudCheck(ip, email, referralCode) {
+  try {
+    // Log this usage
+    await ReferralFraudLog.create({
+      referralCode,
+      type: 'code_usage',
+      metadata: { ip, email },
+    });
+
+    // Check rapid repeat: same IP + same code > 3 times in 10 minutes
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const rapidCount = await ReferralFraudLog.countDocuments({
+      referralCode,
+      type: 'code_usage',
+      'metadata.ip': ip,
+      createdAt: { $gte: tenMinAgo },
+    });
+    if (rapidCount > 3) {
+      await ReferralFraudLog.create({
+        referralCode,
+        type: 'rapid_repeat',
+        metadata: { ip, email, details: `${rapidCount} uses from same IP in 10 min` },
+      });
+      console.warn(`[Fraud] ⚠️ Rapid repeat: IP ${ip} used code ${referralCode} ${rapidCount}x in 10 min`);
+    }
+
+    // Check suspicious pattern: same email + same code > 3 total uses
+    if (email) {
+      const emailCount = await ReferralFraudLog.countDocuments({
+        referralCode,
+        type: 'code_usage',
+        'metadata.email': email.toLowerCase(),
+      });
+      if (emailCount > 3) {
+        await ReferralFraudLog.create({
+          referralCode,
+          type: 'suspicious_pattern',
+          metadata: { ip, email, details: `Email ${email} used code ${referralCode} ${emailCount} times total` },
+        });
+        console.warn(`[Fraud] ⚠️ Suspicious: ${email} used code ${referralCode} ${emailCount}x total`);
+      }
+    }
+  } catch (err) {
+    console.error('[Fraud] Logging error:', err.message);
   }
 }
 

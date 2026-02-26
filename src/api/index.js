@@ -156,6 +156,21 @@ export const rejectReferral = (id, reviewReason = '') =>
     body: JSON.stringify({ reviewReason }),
   });
 
+// ─── Partner Management (S3) ─────────────────────────────
+export const updatePartner = (id, data) =>
+  request(`/referrals/admin/partner/${id}/update`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const updatePartnerStatus = (id, status) =>
+  request(`/referrals/admin/partner/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+
+export const adjustPartnerCommission = (id, amount, note = '') =>
+  request(`/referrals/admin/partner/${id}/adjust-commission`, {
+    method: 'PATCH',
+    body: JSON.stringify({ amount, ...(note ? { note } : {}) }),
+  });
+
+export const fetchReferralAnalytics = () => request('/referrals/admin/analytics');
+
 // ─── Payouts ──────────────────────────────────────────────
 export const fetchEligiblePayouts = () => request('/payouts/eligible');
 export const fetchPayoutHistory = (partnerId = '') =>
@@ -167,8 +182,22 @@ export const processPayout = (partnerId, amount, note = '') =>
   });
 
 // ─── Creator Dashboard ───────────────────────────────
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return !payload.exp || payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
 function creatorRequest(url, options = {}) {
   const token = localStorage.getItem('creator_token');
+  if (token && isTokenExpired(token)) {
+    localStorage.removeItem('creator_token');
+    window.dispatchEvent(new Event('creator_token_expired'));
+    return Promise.reject(new Error('Session expired. Please sign in again.'));
+  }
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers.Authorization = `Bearer ${token}`;
   return fetch(`${API_BASE}${url}`, { ...options, headers }).then(async (res) => {

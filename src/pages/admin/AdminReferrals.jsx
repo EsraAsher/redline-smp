@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchAdminApplications, approveReferral, rejectReferral } from '../../api';
+import AdminPartners from './AdminPartners';
 
 const statusColors = {
   pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
@@ -8,6 +9,7 @@ const statusColors = {
 };
 
 const AdminReferrals = () => {
+  const [subTab, setSubTab] = useState('applications');
   const [referrals, setReferrals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -99,18 +101,42 @@ const AdminReferrals = () => {
 
   const filtered = filter === 'all' ? referrals : referrals.filter((r) => r.status === filter);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-gray-500 font-pixel text-sm animate-pulse">Loading referrals...</div>
-      </div>
-    );
-  }
-
   const pendingCount = referrals.filter((r) => r.status === 'pending').length;
 
   return (
     <div className="space-y-6">
+      {/* Sub-tabs: Applications / Partners */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setSubTab('applications')}
+          className={`px-4 py-2 font-pixel text-xs rounded-lg transition-all ${
+            subTab === 'applications'
+              ? 'bg-red-500/20 border border-red-500/50 text-red-400'
+              : 'bg-dark-surface border border-white/10 text-gray-400 hover:text-white'
+          }`}
+        >
+          📋 Applications
+        </button>
+        <button
+          onClick={() => setSubTab('partners')}
+          className={`px-4 py-2 font-pixel text-xs rounded-lg transition-all ${
+            subTab === 'partners'
+              ? 'bg-red-500/20 border border-red-500/50 text-red-400'
+              : 'bg-dark-surface border border-white/10 text-gray-400 hover:text-white'
+          }`}
+        >
+          🤝 Partners
+        </button>
+      </div>
+
+      {subTab === 'partners' ? (
+        <AdminPartners />
+      ) : loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-gray-500 font-pixel text-sm animate-pulse">Loading referrals...</div>
+        </div>
+      ) : (
+      <>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="font-pixel text-sm text-red-400">
@@ -387,6 +413,8 @@ const AdminReferrals = () => {
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );
