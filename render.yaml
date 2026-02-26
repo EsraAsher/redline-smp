@@ -41,28 +41,3 @@ services:
       - key: BOT_INTERNAL_SECRET
         sync: false
 
-  # ─── Discord Bot (separate worker) ──────────────────────
-  - type: worker
-    name: redline-smp-bot
-    env: node
-    region: singapore
-    plan: free
-    rootDir: bot
-    buildCommand: npm install --omit=dev
-    startCommand: node index.js
-    autoDeploy: true
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DISCORD_BOT_TOKEN
-        sync: false
-      - key: DISCORD_CLIENT_ID
-        sync: false
-      - key: DISCORD_GUILD_ID
-        sync: false
-      - key: DISCORD_CREATOR_ROLE_ID
-        sync: false
-      - key: BACKEND_BASE_URL
-        sync: false
-      - key: BOT_INTERNAL_SECRET
-        sync: false
