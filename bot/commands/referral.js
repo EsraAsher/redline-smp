@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { fetchReferralStats } from '../utils/api.js';
+import { fetchReferralStats } from '../services/backend.js';
 
 // ─── Command definition ──────────────────────────────────
 export const data = new SlashCommandBuilder()

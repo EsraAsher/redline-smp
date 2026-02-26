@@ -7,7 +7,7 @@
 import dotenv from 'dotenv';
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import { data as referralData, execute as referralExecute } from './commands/referral.js';
-import { setClient } from './services/roles.js';
+import { setClient } from './services/roleManager.js';
 
 dotenv.config();
 
