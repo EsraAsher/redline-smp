@@ -1,0 +1,15 @@
+{
+  "name": "redline-smp-bot",
+  "version": "1.0.0",
+  "description": "Redline SMP Discord Bot — Creator referral stats & role assignment",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "deploy-commands": "node deploy-commands.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.7"
+  }
+}

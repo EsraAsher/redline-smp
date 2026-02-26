@@ -18,6 +18,33 @@ const applyLimiter = rateLimit({
   message: { message: 'Too many applications. Please try again later.' },
 });
 
+// ─── Helper: assign Creator role via Discord API ──────────
+// Called from approval handler. Uses bot token directly.
+// Non-fatal: failures are logged but never break the approval flow.
+async function assignCreatorRoleViaBot(discordId) {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  const guildId = process.env.DISCORD_GUILD_ID;
+  const roleId = process.env.DISCORD_CREATOR_ROLE_ID;
+
+  if (!token || !guildId || !roleId) {
+    console.warn('[Roles] Missing DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, or DISCORD_CREATOR_ROLE_ID — skipping role assignment.');
+    return;
+  }
+
+  const url = `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { Authorization: `Bot ${token}` },
+  });
+
+  if (res.status === 204 || res.ok) {
+    console.log(`[Roles] ✅ Assigned Creator role to Discord user ${discordId}`);
+  } else {
+    const body = await res.text().catch(() => '');
+    console.warn(`[Roles] Failed to assign role (${res.status}): ${body}`);
+  }
+}
+
 // ─── Helper: auto-generate a unique referral code ─────────
 async function generateUniqueCode(baseName) {
   const prefix = baseName
@@ -228,6 +255,9 @@ router.patch('/admin/:id/approve', authMiddleware, async (req, res) => {
       commissionPercent: partner.commissionPercent,
       reviewedBy: req.admin.username,
     })).catch(() => {});
+
+    // Assign Creator role via bot (non-blocking, non-fatal)
+    assignCreatorRoleViaBot(application.discordId).catch(() => {});
 
     res.json({
       message: 'Referral approved successfully.',
