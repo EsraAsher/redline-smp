@@ -12,7 +12,7 @@ const ProductSection = ({ id, title, slug, products }) => {
         <div className="h-1 bg-linear-to-r from-transparent via-neon-purple to-transparent grow rounded-full opacity-50"></div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-8">
         {products.map((product) => (
           <ProductCard
             key={product._id || product.id}

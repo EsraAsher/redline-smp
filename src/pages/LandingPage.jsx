@@ -51,7 +51,7 @@ const LandingPage = () => {
             </p>
 
             {/* Mobile-only server IP + Discord buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 lg:hidden">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 lg:hidden mb-6">
               <div
                 onClick={handleCopy}
                 className="flex items-center gap-3 cursor-pointer transition-transform duration-300 hover:scale-105"
@@ -242,7 +242,7 @@ const LandingPage = () => {
       <section className="py-12 sm:py-16 px-4 border-t border-white/5">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="font-pixel text-sm sm:text-base text-red-400 mb-3">ABOUT REDLINE SMP</h2>
+            <h2 className="font-pixel text-sm sm:text-base text-red-400 mb-3">WHAT WE OFFER</h2>
             <div className="w-16 h-0.5 bg-red-500/50 mx-auto" />
           </div>
 
@@ -250,18 +250,18 @@ const LandingPage = () => {
             {[
               {
                 icon: '⚔️',
-                title: 'Survival Experience',
-                desc: 'A hardcore survival world where only the strongest thrive. Custom gear, epic battles, and endless adventure await.',
+                title: 'SURVIVAL',
+                desc: 'Classic survival gameplay with custom enchants, economy, and a friendly community to build with.',
               },
               {
-                icon: '🔓',
-                title: 'Cracked Support',
-                desc: 'Play with both premium and cracked Minecraft accounts. Everyone is welcome in the Redline community.',
+                icon: '🎉',
+                title: 'EVENTS',
+                desc: 'Weekly events including PvP tournaments, build contests, and seasonal challenges with exclusive rewards.',
               },
               {
-                icon: '🎁',
-                title: 'Automatic Rewards',
-                desc: 'Vote for the server and earn in-game rewards automatically. Support us and get rewarded instantly.',
+                icon: '💬',
+                title: 'COMMUNITY',
+                desc: 'An active Discord server, dedicated staff team, and a welcoming environment for all players.',
               },
             ].map((card) => (
               <div

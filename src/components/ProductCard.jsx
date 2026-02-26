@@ -27,10 +27,10 @@ const ProductCard = ({ id, title, price, features, image }) => {
         </div>
       </div>
 
-      <div className="p-4 sm:p-6 relative z-10">
-        <h3 className="text-base sm:text-xl font-bold font-pixel text-white mb-3 sm:mb-4 group-hover:text-red-400 transition-colors">{title}</h3>
+      <div className="p-3 sm:p-6 relative z-10">
+        <h3 className="text-sm sm:text-xl font-bold font-pixel text-white mb-2 sm:mb-4 group-hover:text-red-400 transition-colors">{title}</h3>
         
-        <ul className="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6 text-sm text-gray-300">
+        <ul className="space-y-1 sm:space-y-2 mb-3 sm:mb-6 text-xs sm:text-sm text-gray-300">
           {features.map((feature, idx) => (
             <li key={idx} className="flex items-center">
               <span className="text-red-400 mr-2">›</span> {feature}
@@ -40,7 +40,7 @@ const ProductCard = ({ id, title, price, features, image }) => {
 
         <button
           onClick={handleAdd}
-          className={`w-full py-3 font-pixel text-sm rounded transition-all duration-300 ${
+          className={`w-full py-2 sm:py-3 font-pixel text-xs sm:text-sm rounded transition-all duration-300 ${
             added
               ? 'bg-green-600 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]'
               : 'bg-red-500/10 border border-red-500 text-red-400 hover:bg-red-500 hover:text-white shadow-[0_0_10px_rgba(255,0,0,0.1)] hover:shadow-[0_0_20px_rgba(255,0,0,0.4)]'
