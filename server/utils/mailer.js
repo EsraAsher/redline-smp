@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 
 // ─── Lazy-initialised SMTP transporter ────────────────────
 let transporter = null;
+let smtpVerified = false;
 
 function getTransporter() {
   if (transporter) return transporter;
@@ -10,30 +11,70 @@ function getTransporter() {
 
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
     console.warn('⚠️  SMTP not configured — emails will be skipped');
+    console.warn('   Missing:', [
+      !SMTP_HOST && 'SMTP_HOST',
+      !SMTP_USER && 'SMTP_USER',
+      !SMTP_PASS && 'SMTP_PASS',
+    ].filter(Boolean).join(', '));
     return null;
   }
 
+  const port = parseInt(SMTP_PORT) || 587;
+  const isSSL = port === 465;
+
+  console.log(`[Mailer] Creating transporter → ${SMTP_HOST}:${port} (${isSSL ? 'SSL' : 'STARTTLS'}), user=${SMTP_USER}`);
+
   transporter = nodemailer.createTransport({
     host: SMTP_HOST,
-    port: parseInt(SMTP_PORT) || 587,
-    secure: false, // STARTTLS on port 587
+    port,
+    secure: isSSL,           // true for 465 (SSL), false for 587 (STARTTLS)
     auth: { user: SMTP_USER, pass: SMTP_PASS },
-    tls: { rejectUnauthorized: true },
+    tls: { rejectUnauthorized: false },   // accept self-signed / chain certs
+    connectionTimeout: 10000,             // 10s connect timeout
+    greetingTimeout: 10000,               // 10s greeting timeout
+    socketTimeout: 15000,                 // 15s socket timeout
   });
 
+  // Verify SMTP connection on first init (async, non-blocking)
+  transporter.verify()
+    .then(() => {
+      smtpVerified = true;
+      console.log('[Mailer] ✅ SMTP connection verified successfully');
+    })
+    .catch((err) => {
+      console.error('[Mailer] ❌ SMTP verification FAILED:', err.message);
+      console.error('[Mailer]    Check SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS on Render');
+    });
+
   return transporter;
+}
+
+// ─── SMTP health check (for test endpoint) ────────────────
+export async function verifySMTP() {
+  const t = getTransporter();
+  if (!t) return { ok: false, error: 'SMTP not configured — missing env vars' };
+
+  try {
+    await t.verify();
+    return { ok: true, host: process.env.SMTP_HOST, port: process.env.SMTP_PORT, user: process.env.SMTP_USER };
+  } catch (err) {
+    return { ok: false, error: err.message, host: process.env.SMTP_HOST, port: process.env.SMTP_PORT };
+  }
 }
 
 // ─── Reusable sendMail helper ─────────────────────────────
 // Returns true on success, false on failure (never throws).
 export async function sendMail({ to, subject, html }) {
   const t = getTransporter();
-  if (!t) return false;
+  if (!t) {
+    console.warn(`[Mailer] Skipped email to ${to} — no transporter`);
+    return false;
+  }
 
   const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER;
 
   try {
-    await t.sendMail({
+    const info = await t.sendMail({
       from: `"Redline SMP" <${fromAddress}>`,
       to,
       replyTo: process.env.SMTP_USER,
@@ -44,9 +85,11 @@ export async function sendMail({ to, subject, html }) {
         'List-Unsubscribe': `<mailto:${fromAddress}?subject=unsubscribe>`,
       },
     });
+    console.log(`[Mailer] ✅ Sent to ${to} | subject="${subject}" | messageId=${info.messageId}`);
     return true;
   } catch (err) {
-    console.error(`[Mailer] Failed to send to ${to}:`, err.message);
+    console.error(`[Mailer] ❌ Failed to send to ${to}:`, err.message);
+    console.error(`[Mailer]    Code: ${err.code || 'N/A'} | Command: ${err.command || 'N/A'}`);
     return false;
   }
 }
