@@ -185,6 +185,13 @@ const Navbar = ({ username }) => {
               🎫 HELP
             </Link>
             <Link
+              to="/creators"
+              className="px-6 py-3.5 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-sm border-l-2 border-transparent hover:border-red-500"
+              onClick={() => setDrawerOpen(false)}
+            >
+              🎬 CREATORS
+            </Link>
+            <Link
               to="/about"
               className="px-6 py-3.5 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-sm border-l-2 border-transparent hover:border-red-500"
               onClick={() => setDrawerOpen(false)}
@@ -222,6 +229,7 @@ const Navbar = ({ username }) => {
           <Link to="/store" className="hover:text-red-400 transition-colors">STORE</Link>
           <Link to="/vote" className="hover:text-red-400 transition-colors">VOTE US</Link>
           <Link to="/help" className="hover:text-red-400 transition-colors">HELP</Link>
+          <Link to="/creators" className="hover:text-red-400 transition-colors">CREATORS</Link>
           <Link to="/about" className="hover:text-red-400 transition-colors">ABOUT US</Link>
         </div>
 
@@ -244,6 +252,9 @@ const Navbar = ({ username }) => {
                 </Link>
                 <Link to="/help" className="block px-6 py-3.5 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-sm border-b border-white/5" onClick={() => setMoreOpen(false)}>
                   🎫 HELP
+                </Link>
+                <Link to="/creators" className="block px-6 py-3.5 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-sm border-b border-white/5" onClick={() => setMoreOpen(false)}>
+                  🎬 CREATORS
                 </Link>
                 <Link to="/about" className="block px-6 py-3.5 text-gray-300 hover:text-white hover:bg-red-500/10 transition-all font-pixel text-sm" onClick={() => setMoreOpen(false)}>
                   ℹ️ ABOUT US

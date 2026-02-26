@@ -21,6 +21,7 @@ import ReferralApplyPage from './pages/ReferralApplyPage';
 import CreatorLoginPage from './pages/CreatorLoginPage';
 import CreatorCallbackPage from './pages/CreatorCallbackPage';
 import CreatorDashboardPage from './pages/CreatorDashboardPage';
+import CreatorProgramPage from './pages/CreatorProgramPage';
 
 function StorePage() {
   const [sections, setSections] = useState([]);
@@ -108,6 +109,7 @@ function App() {
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/collection/:slug" element={<CollectionPage />} />
+                <Route path="/creators" element={<CreatorProgramPage />} />
                 <Route path="/apply" element={<ReferralApplyPage />} />
 
                 {/* Creator dashboard routes */}
