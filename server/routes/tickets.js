@@ -11,7 +11,7 @@ import {
 } from '../utils/mailer.js';
 
 const router = express.Router();
-const ADMIN_EMAIL = 'tickets@redlinesmp.fun';
+const ADMIN_EMAIL = 'redlinesmp@gmail.com';
 
 // ─── Helper: truncate for preview ─────────────────────────
 function preview(text, len = 120) {
