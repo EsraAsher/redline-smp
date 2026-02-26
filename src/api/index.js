@@ -106,10 +106,10 @@ export const createPaymentOrder = (mcUsername, email, items, storeCode) =>
 export const getOrderStatus = (orderId) => request(`/payments/order/${orderId}`);
 
 // ─── Support Tickets ──────────────────────────────────────
-export const createTicket = (email, category, message) =>
+export const createTicket = (email, username, category, message) =>
   request('/tickets/create', {
     method: 'POST',
-    body: JSON.stringify({ email, category, message }),
+    body: JSON.stringify({ email, username, category, message }),
   });
 
 export const fetchAdminTickets = () => request('/tickets/admin');

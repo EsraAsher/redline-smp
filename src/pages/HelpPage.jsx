@@ -14,6 +14,7 @@ const CATEGORIES = [
 const HelpPage = () => {
   const [ticket, setTicket] = useState({
     email: '',
+    username: '',
     category: '',
     message: '',
   });
@@ -30,9 +31,9 @@ const HelpPage = () => {
     setSubmitting(true);
     setError('');
     try {
-      await createTicket(ticket.email.trim(), ticket.category, ticket.message.trim());
+      await createTicket(ticket.email.trim(), ticket.username.trim(), ticket.category, ticket.message.trim());
       setSubmitted(true);
-      setTicket({ email: '', category: '', message: '' });
+      setTicket({ email: '', username: '', category: '', message: '' });
     } catch (err) {
       setError(err.message || 'Failed to submit ticket.');
     } finally {
@@ -81,6 +82,17 @@ const HelpPage = () => {
                     required
                     className="w-full bg-black/50 border border-red-500/30 rounded p-3 text-white focus:outline-none focus:border-red-500 focus:shadow-[0_0_10px_rgba(255,0,0,0.2)] transition-all font-mono text-sm"
                     placeholder="you@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-xs font-pixel mb-2">MINECRAFT USERNAME</label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={ticket.username}
+                    onChange={handleChange}
+                    className="w-full bg-black/50 border border-red-500/30 rounded p-3 text-white focus:outline-none focus:border-red-500 focus:shadow-[0_0_10px_rgba(255,0,0,0.2)] transition-all font-mono text-sm"
+                    placeholder="Your in-game name (optional)"
                   />
                 </div>
                 <div>

@@ -98,10 +98,13 @@ const AdminTickets = () => {
               key={ticket._id}
               className="bg-dark-surface border border-white/10 rounded-xl p-4 sm:p-5 hover:border-red-500/20 transition-all"
             >
-              {/* Top row: email + status + date */}
+              {/* Top row: email + username + status + date */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-white text-sm font-mono truncate">{ticket.email}</span>
+                  {ticket.username && (
+                    <span className="text-yellow-400 text-xs font-pixel truncate">⛏ {ticket.username}</span>
+                  )}
                   <span
                     className={`px-2 py-0.5 rounded text-[10px] font-pixel border shrink-0 ${
                       statusColors[ticket.status]

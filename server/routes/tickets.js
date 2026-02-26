@@ -1,85 +1,68 @@
 import express from 'express';
 import Ticket from '../models/Ticket.js';
 import authMiddleware from '../middleware/auth.js';
-import nodemailer from 'nodemailer';
+import {
+  sendMail,
+  ticketCreatedUserHTML,
+  ticketCreatedAdminHTML,
+  ticketResolvedHTML,
+  ticketDeclinedHTML,
+} from '../utils/mailer.js';
 
 const router = express.Router();
+const ADMIN_EMAIL = 'tickets@redlinesmp.fun';
 
-// ─── Email transporter (lazy-init) ───────────────────────
-let transporter = null;
-
-function getTransporter() {
-  if (transporter) return transporter;
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn('⚠️  SMTP not configured — ticket emails will be skipped');
-    return null;
-  }
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-  return transporter;
-}
-
-async function sendTicketEmail(to, status) {
-  const t = getTransporter();
-  if (!t) return;
-
-  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER;
-
-  if (status === 'resolved') {
-    await t.sendMail({
-      from: `"Redline SMP" <${fromAddress}>`,
-      to,
-      subject: 'Your RedLine SMP ticket has been resolved',
-      html: `
-        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;background:#111;color:#eee;border-radius:12px;border:1px solid #333;">
-          <h2 style="color:#ef4444;margin-top:0;">Ticket Resolved ✅</h2>
-          <p>Hey there,</p>
-          <p>Great news! Your support ticket has been reviewed and <strong style="color:#22c55e;">resolved</strong> by our team.</p>
-          <p>If you have any further issues, feel free to open a new ticket or reach out on our <a href="https://discord.gg/wBNMMj2PE4" style="color:#ef4444;">Discord</a>.</p>
-          <p style="margin-top:24px;color:#888;font-size:12px;">— Redline SMP Team</p>
-        </div>
-      `,
-    });
-  } else if (status === 'declined') {
-    await t.sendMail({
-      from: `"Redline SMP" <${fromAddress}>`,
-      to,
-      subject: 'Your RedLine SMP ticket update',
-      html: `
-        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;background:#111;color:#eee;border-radius:12px;border:1px solid #333;">
-          <h2 style="color:#ef4444;margin-top:0;">Ticket Update</h2>
-          <p>Hey there,</p>
-          <p>After reviewing your support ticket, our team was unable to take action on this request at this time.</p>
-          <p>If you believe this was in error or need further assistance, please don't hesitate to open a new ticket or contact us on <a href="https://discord.gg/wBNMMj2PE4" style="color:#ef4444;">Discord</a>.</p>
-          <p style="margin-top:24px;color:#888;font-size:12px;">— Redline SMP Team</p>
-        </div>
-      `,
-    });
-  }
+// ─── Helper: truncate for preview ─────────────────────────
+function preview(text, len = 120) {
+  if (!text) return '';
+  return text.length > len ? text.slice(0, len) + '…' : text;
 }
 
 // ─── PUBLIC: Create ticket ────────────────────────────────
 router.post('/create', async (req, res) => {
   try {
-    const { email, category, message } = req.body;
+    const { email, username, category, message } = req.body;
 
     if (!email || !category || !message) {
       return res.status(400).json({ message: 'Email, category, and message are required.' });
     }
 
-    // Basic email format check
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: 'Invalid email address.' });
     }
 
-    await Ticket.create({ email: email.trim(), category: category.trim(), message: message.trim() });
+    const ticket = await Ticket.create({
+      email: email.trim(),
+      username: (username || '').trim(),
+      category: category.trim(),
+      message: message.trim(),
+    });
+
+    // Fire-and-forget emails (never block the response)
+    const emailData = {
+      ticketId: ticket._id.toString(),
+      email: ticket.email,
+      username: ticket.username,
+      category: ticket.category,
+      message: ticket.message,
+      messagePreview: preview(ticket.message),
+      timestamp: ticket.createdAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+    };
+
+    // 1) Confirmation to user
+    sendMail({
+      to: ticket.email,
+      subject: `Ticket Received — ${ticket.category}`,
+      html: ticketCreatedUserHTML(emailData),
+    });
+
+    // 2) Notification to admin
+    sendMail({
+      to: ADMIN_EMAIL,
+      subject: `New Ticket: ${ticket.category} — ${ticket.username || ticket.email}`,
+      html: ticketCreatedAdminHTML(emailData),
+    });
+
     res.json({ success: true });
   } catch (err) {
     console.error('Ticket create error:', err);
@@ -117,10 +100,25 @@ router.patch('/admin/:id/status', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Ticket not found.' });
     }
 
-    // Send email notification (fire & forget)
-    sendTicketEmail(ticket.email, status).catch((err) =>
-      console.error('Failed to send ticket email:', err.message)
-    );
+    // Fire-and-forget status email
+    const tplData = {
+      ticketId: ticket._id.toString(),
+      username: ticket.username,
+    };
+
+    if (status === 'resolved') {
+      sendMail({
+        to: ticket.email,
+        subject: 'Your Redline SMP ticket has been resolved',
+        html: ticketResolvedHTML(tplData),
+      });
+    } else if (status === 'declined') {
+      sendMail({
+        to: ticket.email,
+        subject: 'Your Redline SMP ticket update',
+        html: ticketDeclinedHTML(tplData),
+      });
+    }
 
     res.json({ success: true, ticket });
   } catch (err) {

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const ticketSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, trim: true },
+    username: { type: String, trim: true, default: '' },
     category: { type: String, required: true, trim: true },
     message: { type: String, required: true, trim: true },
     status: {
