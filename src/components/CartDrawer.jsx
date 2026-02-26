@@ -11,6 +11,7 @@ const CartDrawer = () => {
   const [storeCode, setStoreCode] = useState('');
   const [codeVerified, setCodeVerified] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
   const [checkoutStep, setCheckoutStep] = useState('cart'); // cart | details | processing | success | error
   const [processing, setProcessing] = useState(false);
   const [orderResult, setOrderResult] = useState(null);
@@ -63,7 +64,7 @@ const CartDrawer = () => {
       const loaded = await loadRazorpayScript();
       if (!loaded) throw new Error('Failed to load Razorpay. Check your internet connection.');
 
-      // Create order on backend (includes verified store code)
+      // Create order on backend (includes verified store code + optional referral)
       const orderData = await createPaymentOrder(
         mcUsername.trim(),
         email.trim(),
@@ -71,7 +72,8 @@ const CartDrawer = () => {
           productId: item.id,
           quantity: item.qty,
         })),
-        storeCode.trim()
+        storeCode.trim(),
+        referralCode.trim() || undefined
       );
 
       // Open Razorpay checkout
@@ -130,6 +132,7 @@ const CartDrawer = () => {
     setProcessing(false);
     setStoreCode('');
     setCodeVerified(false);
+    setReferralCode('');
   };
 
   const handleClose = () => {
@@ -345,6 +348,24 @@ const CartDrawer = () => {
               </div>
               <p className="text-[10px] text-gray-500 mt-1">
                 Run <span className="text-red-400 font-mono">/storecode</span> in-game to get your code.
+              </p>
+            </div>
+
+            {/* Referral Code (optional) */}
+            <div>
+              <label className="block text-gray-400 text-xs mb-1 font-pixel">
+                Referral Code <span className="text-gray-600 font-sans text-[10px]">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ''))}
+                placeholder="e.g. STEVE10"
+                maxLength={20}
+                className="w-full bg-black/50 border border-white/20 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500 transition-colors font-mono uppercase"
+              />
+              <p className="text-[10px] text-gray-500 mt-1">
+                Got a creator code? Enter it for a discount.
               </p>
             </div>
 

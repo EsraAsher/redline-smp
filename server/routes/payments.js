@@ -13,6 +13,7 @@ import Razorpay from 'razorpay';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import StoreCode from '../models/StoreCode.js';
+import ReferralPartner from '../models/ReferralPartner.js';
 
 const router = Router();
 
@@ -29,7 +30,7 @@ function getRazorpay() {
 // ─── 1. Create Razorpay Order ─────────────────────────────
 router.post('/create-order', async (req, res) => {
   try {
-    const { mcUsername, email, items, storeCode } = req.body;
+    const { mcUsername, email, items, storeCode, referralCode } = req.body;
 
     if (!mcUsername || !items?.length) {
       return res.status(400).json({ message: 'mcUsername and items are required' });
@@ -81,6 +82,55 @@ router.post('/create-order', async (req, res) => {
     // Round to 2 decimals
     total = Math.round(total * 100) / 100;
 
+    // ── Referral code validation (Phase 2) ──────────────────
+    let referralSnapshot = null;
+
+    if (referralCode && referralCode.trim()) {
+      const code = referralCode.trim().toUpperCase();
+
+      // Find the referral partner
+      const partner = await ReferralPartner.findOne({ referralCode: code });
+      if (!partner) {
+        return res.status(400).json({ message: `Referral code "${code}" does not exist.` });
+      }
+
+      // Status must be active (not paused or banned)
+      if (partner.status !== 'active') {
+        return res.status(400).json({ message: 'This referral code is currently inactive.' });
+      }
+
+      // Check expiry
+      if (partner.expiresAt && new Date() > partner.expiresAt) {
+        return res.status(400).json({ message: 'This referral code has expired.' });
+      }
+
+      // Check max uses
+      if (partner.maxUses !== null && partner.totalUses >= partner.maxUses) {
+        return res.status(400).json({ message: 'This referral code has reached its maximum usage limit.' });
+      }
+
+      // Prevent self-use: buyer's mcUsername must not match creator's
+      if (partner.minecraftUsername && mcUsername.trim().toLowerCase() === partner.minecraftUsername.trim().toLowerCase()) {
+        return res.status(400).json({ message: 'You cannot use your own referral code.' });
+      }
+
+      // Calculate discount server-side
+      const discountAmount = Math.round(total * (partner.discountPercent / 100) * 100) / 100;
+
+      referralSnapshot = {
+        referralCodeUsed: code,
+        referralCreatorId: partner._id,
+        referralDiscountApplied: discountAmount,
+        referralCommissionSnapshot: partner.commissionPercent,
+        referralTracked: false,
+      };
+
+      // Apply discount
+      total = Math.round((total - discountAmount) * 100) / 100;
+      if (total < 1) total = 1; // Razorpay minimum ₹1
+    }
+    // ── End referral validation ─────────────────────────────
+
     // Create Razorpay order (amount in smallest unit — paise for INR)
     const rz = getRazorpay();
     const rzOrder = await rz.orders.create({
@@ -103,6 +153,8 @@ router.post('/create-order', async (req, res) => {
       razorpayOrderId: rzOrder.id,
       status: 'created',
       paymentStatus: 'created',
+      // Referral snapshot (null-safe spread)
+      ...(referralSnapshot || {}),
     });
 
     res.json({
@@ -112,6 +164,12 @@ router.post('/create-order', async (req, res) => {
       amount: rzOrder.amount,
       currency: rzOrder.currency,
       mcUsername,
+      // Return discount info so frontend can display it (not used for calculation)
+      ...(referralSnapshot ? {
+        referralApplied: true,
+        referralCode: referralSnapshot.referralCodeUsed,
+        discountAmount: referralSnapshot.referralDiscountApplied,
+      } : {}),
     });
   } catch (err) {
     console.error('[Payment] create-order error:', err);
@@ -214,6 +272,9 @@ router.post('/webhook', async (req, res) => {
     // Update product analytics
     await updateProductAnalytics(order);
 
+    // Track referral commission (Phase 3)
+    await trackReferralCommission(order);
+
     res.status(200).send('OK');
   } catch (err) {
     console.error('[Webhook] Error:', err);
@@ -251,6 +312,58 @@ async function updateProductAnalytics(order) {
     }
   } catch (err) {
     console.error('[Analytics] Failed to update product stats:', err.message);
+  }
+}
+
+/**
+ * Track referral commission after a verified payment.
+ * Only runs if:
+ *   - order has referralCodeUsed
+ *   - referralTracked is false (prevents duplicate commission)
+ *   - paymentStatus is 'paid' and webhookVerified is true
+ *   - order is not refunded or failed
+ */
+async function trackReferralCommission(order) {
+  try {
+    // Guard: must have referral code and not already tracked
+    if (!order.referralCodeUsed || order.referralTracked) return;
+
+    // Guard: only process fully verified paid orders
+    if (order.paymentStatus !== 'paid' || !order.webhookVerified) return;
+
+    // Guard: skip refunded / failed orders
+    if (order.status === 'refunded' || order.status === 'failed') return;
+
+    // Calculate commission from the snapshot stored at checkout
+    const commission = Math.round(order.total * (order.referralCommissionSnapshot / 100) * 100) / 100;
+
+    // Atomically update the referral partner's tracking counters
+    const updated = await ReferralPartner.findByIdAndUpdate(
+      order.referralCreatorId,
+      {
+        $inc: {
+          totalUses: 1,
+          totalRevenueGenerated: order.total,
+          totalCommissionEarned: commission,
+          pendingCommission: commission,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      console.warn(`[Referral] Partner ${order.referralCreatorId} not found — skipping commission for order ${order._id}`);
+      return;
+    }
+
+    // Mark order as tracked so commission is never applied twice
+    order.referralTracked = true;
+    await order.save();
+
+    console.log(`[Referral] ✅ Commission ₹${commission} tracked for code ${order.referralCodeUsed} (order ${order._id})`);
+  } catch (err) {
+    // Non-fatal: log but don't break the webhook response
+    console.error('[Referral] Commission tracking error:', err.message);
   }
 }
 

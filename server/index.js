@@ -11,6 +11,9 @@ import storeCodeRoutes from './routes/storecode.js';
 import rewardsRoutes from './routes/rewards.js';
 import ticketRoutes from './routes/tickets.js';
 import votingRoutes from './routes/voting.js';
+import referralRoutes from './routes/referrals.js';
+import creatorRoutes from './routes/creator.js';
+import payoutRoutes from './routes/payouts.js';
 
 dotenv.config();
 
@@ -58,6 +61,9 @@ app.use('/api/storecode', storeCodeRoutes);
 app.use('/api/rewards', rewardsRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/voting', votingRoutes);
+app.use('/api/referrals', referralRoutes);
+app.use('/api/creator', creatorRoutes);
+app.use('/api/payouts', payoutRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

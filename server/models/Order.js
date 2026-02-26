@@ -67,6 +67,29 @@ const orderSchema = new mongoose.Schema({
   },
   deliveryLog: [String],
 
+  // ─── Referral Snapshot (Phase 2) ──────────
+  referralCodeUsed: {
+    type: String,
+    default: null,
+  },
+  referralCreatorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ReferralPartner',
+    default: null,
+  },
+  referralDiscountApplied: {
+    type: Number,
+    default: 0,
+  },
+  referralCommissionSnapshot: {
+    type: Number,
+    default: 0,
+  },
+  referralTracked: {
+    type: Boolean,
+    default: false,
+  },
+
   // ─── Metadata ─────────────────────────────
   webhookVerified: {
     type: Boolean,

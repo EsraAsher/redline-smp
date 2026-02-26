@@ -7,6 +7,7 @@ import UsernameModal from './components/UsernameModal';
 import CartDrawer from './components/CartDrawer';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CreatorAuthProvider } from './context/CreatorAuthContext';
 import { fetchHomepageProducts } from './api';
 import LandingPage from './pages/LandingPage';
 import HelpPage from './pages/HelpPage';
@@ -16,6 +17,10 @@ import VotePage from './pages/VotePage';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import TermsPage from './pages/TermsPage';
+import ReferralApplyPage from './pages/ReferralApplyPage';
+import CreatorLoginPage from './pages/CreatorLoginPage';
+import CreatorCallbackPage from './pages/CreatorCallbackPage';
+import CreatorDashboardPage from './pages/CreatorDashboardPage';
 
 function StorePage() {
   const [sections, setSections] = useState([]);
@@ -89,38 +94,46 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <CartProvider>
-          <div className="min-h-screen text-white font-sans selection:bg-neon-purple selection:text-white overflow-x-hidden">
-            <Particles />
-            <Navbar username={username} />
+        <CreatorAuthProvider>
+          <CartProvider>
+            <div className="min-h-screen text-white font-sans selection:bg-neon-purple selection:text-white overflow-x-hidden">
+              <Particles />
+              <Navbar username={username} />
 
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/store" element={<StorePage />} />
-              <Route path="/vote" element={<VotePage />} />
-              <Route path="/help" element={<HelpPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/collection/:slug" element={<CollectionPage />} />
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/store" element={<StorePage />} />
+                <Route path="/vote" element={<VotePage />} />
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/collection/:slug" element={<CollectionPage />} />
+                <Route path="/apply" element={<ReferralApplyPage />} />
 
-              {/* Hidden admin route */}
-              <Route
-                path="/adminishere"
-                element={
-                  <AdminRoute>
-                    <AdminDashboard />
-                  </AdminRoute>
-                }
-              />
+                {/* Creator dashboard routes */}
+                <Route path="/creator/login" element={<CreatorLoginPage />} />
+                <Route path="/creator/callback" element={<CreatorCallbackPage />} />
+                <Route path="/creator/dashboard" element={<CreatorDashboardPage />} />
 
-              {/* Catch-all redirect */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+                {/* Hidden admin route */}
+                <Route
+                  path="/adminishere"
+                  element={
+                    <AdminRoute>
+                      <AdminDashboard />
+                    </AdminRoute>
+                  }
+                />
 
-            <CartDrawer />
-            <UsernameModal onClose={setUsername} />
-          </div>
-        </CartProvider>
+                {/* Catch-all redirect */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+
+              <CartDrawer />
+              <UsernameModal onClose={setUsername} />
+            </div>
+          </CartProvider>
+        </CreatorAuthProvider>
       </AuthProvider>
     </Router>
   );

@@ -256,3 +256,159 @@ export function ticketDeclinedHTML({ ticketId, username }) {
     ${ctaButton('JOIN DISCORD', 'https://discord.gg/wBNMMj2PE4')}
   `);
 }
+
+// ─── Referral email templates ─────────────────────────────
+
+export function referralApplicationReceivedHTML({ creatorName }) {
+  return wrap(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:32px;margin-bottom:8px;">📋</div>
+      <h2 style="color:#ef4444;margin:0 0 8px;font-size:20px;font-weight:700;">Application Received</h2>
+      ${statusBadge('UNDER REVIEW', 'yellow')}
+    </div>
+
+    <p style="color:#ccc;font-size:14px;line-height:1.8;margin:0 0 20px;">
+      Hey <strong style="color:#fff;">${creatorName || 'there'}</strong>,<br/>
+      Thanks for applying to the <strong style="color:#ef4444;">Redline SMP Creator Referral Program</strong>! We've received your application and our team will review it shortly.
+    </p>
+
+    <div style="background:#0a0a0a;border-left:3px solid #eab308;padding:12px 16px;margin:20px 0;border-radius:0 6px 6px 0;">
+      <div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">WHAT HAPPENS NEXT?</div>
+      <p style="color:#999;font-size:13px;margin:0;line-height:1.8;">
+        Our admin team will review your channel and application. If approved, you'll receive an email with your <strong style="color:#fff;">custom referral code</strong>, discount percentage, and commission details.
+      </p>
+    </div>
+
+    <p style="color:#666;font-size:12px;line-height:1.7;margin:20px 0 0;">
+      This usually takes 1–3 business days. If you have questions, reach out on Discord.
+    </p>
+
+    ${ctaButton('JOIN DISCORD', 'https://discord.gg/wBNMMj2PE4')}
+  `);
+}
+
+export function referralApplicationAdminHTML({ creatorName, email, minecraftUsername, discordId, channelLink, description }) {
+  return wrap(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:32px;margin-bottom:8px;">🔔</div>
+      <h2 style="color:#ef4444;margin:0 0 8px;font-size:20px;font-weight:700;">New Referral Application</h2>
+      ${statusBadge('REQUIRES REVIEW', 'red')}
+    </div>
+
+    ${infoTable(
+      infoRow('Creator', `<strong>${creatorName}</strong>`) +
+      infoRow('Email', `<a href="mailto:${email}" style="color:#ef4444;text-decoration:none;">${email}</a>`) +
+      infoRow('Minecraft', `${minecraftUsername}`) +
+      infoRow('Discord ID', `${discordId}`) +
+      infoRow('Channel', `<a href="${channelLink}" style="color:#ef4444;text-decoration:none;">${channelLink}</a>`, !description)
+    )}
+
+    ${description ? `
+    <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;padding:20px;margin:20px 0;">
+      <div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">DESCRIPTION</div>
+      <p style="color:#ccc;font-size:13px;margin:0;white-space:pre-wrap;line-height:1.7;">${description}</p>
+    </div>` : ''}
+
+    ${ctaButton('REVIEW IN ADMIN PANEL', 'https://store.redlinesmp.fun/adminishere')}
+  `);
+}
+
+export function referralApprovedHTML({ creatorName, referralCode, discountPercent, commissionPercent }) {
+  return wrap(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:32px;margin-bottom:8px;">🎉</div>
+      <h2 style="color:#22c55e;margin:0 0 8px;font-size:20px;font-weight:700;">You're Approved!</h2>
+      ${statusBadge('APPROVED', 'green')}
+    </div>
+
+    <p style="color:#ccc;font-size:14px;line-height:1.8;margin:0 0 20px;">
+      Hey <strong style="color:#fff;">${creatorName || 'there'}</strong>,<br/>
+      Congratulations! Your application to the <strong style="color:#ef4444;">Redline SMP Creator Referral Program</strong> has been <strong style="color:#22c55e;">approved</strong>!
+    </p>
+
+    <div style="text-align:center;margin:24px 0;padding:20px;background:#0a0a0a;border:2px solid rgba(34,197,94,0.3);border-radius:12px;">
+      <div style="font-size:10px;color:#555;letter-spacing:2px;margin-bottom:8px;">YOUR REFERRAL CODE</div>
+      <div style="font-size:28px;font-family:'Courier New',monospace;color:#22c55e;font-weight:700;letter-spacing:4px;">${referralCode}</div>
+    </div>
+
+    ${infoTable(
+      infoRow('Your Code', `<span style="font-family:'Courier New',monospace;color:#22c55e;font-weight:700;">${referralCode}</span>`) +
+      infoRow('Buyer Discount', `<strong style="color:#eab308;">${discountPercent}%</strong> off`) +
+      infoRow('Your Commission', `<strong style="color:#22c55e;">${commissionPercent}%</strong> per sale`, true)
+    )}
+
+    <div style="background:#0a0a0a;border-left:3px solid #22c55e;padding:12px 16px;margin:20px 0;border-radius:0 6px 6px 0;">
+      <div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">HOW IT WORKS</div>
+      <p style="color:#999;font-size:13px;margin:0;line-height:1.8;">
+        Share your code <strong style="color:#fff;">${referralCode}</strong> with your audience. When they use it at checkout on the Redline SMP store, they get <strong style="color:#eab308;">${discountPercent}% off</strong> and you earn <strong style="color:#22c55e;">${commissionPercent}% commission</strong> on the sale.
+      </p>
+    </div>
+
+    <p style="color:#666;font-size:12px;line-height:1.7;margin:20px 0 0;">
+      Commission payouts are handled manually by our team. Questions? Reach out on Discord.
+    </p>
+
+    ${ctaButton('VISIT STORE', 'https://store.redlinesmp.fun')}
+  `);
+}
+
+export function referralRejectedHTML({ creatorName }) {
+  return wrap(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:32px;margin-bottom:8px;">📋</div>
+      <h2 style="color:#ef4444;margin:0 0 8px;font-size:20px;font-weight:700;">Application Update</h2>
+      ${statusBadge('NOT APPROVED', 'red')}
+    </div>
+
+    <p style="color:#ccc;font-size:14px;line-height:1.8;margin:0 0 20px;">
+      Hey <strong style="color:#fff;">${creatorName || 'there'}</strong>,<br/>
+      Thank you for your interest in the <strong style="color:#ef4444;">Redline SMP Creator Referral Program</strong>. After reviewing your application, we're unable to approve it at this time.
+    </p>
+
+    <div style="background:#0a0a0a;border-left:3px solid #ef4444;padding:12px 16px;margin:20px 0;border-radius:0 6px 6px 0;">
+      <div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">WHAT YOU CAN DO</div>
+      <p style="color:#999;font-size:13px;margin:0;line-height:1.8;">
+        You're welcome to reapply in the future once your channel has grown. In the meantime, keep creating awesome content and growing your community!
+      </p>
+    </div>
+
+    <p style="color:#666;font-size:12px;line-height:1.7;margin:20px 0 0;">
+      If you have questions, reach out on Discord.
+    </p>
+
+    ${ctaButton('JOIN DISCORD', 'https://discord.gg/wBNMMj2PE4')}
+  `);
+}
+
+export function payoutProcessedHTML({ creatorName, amount, referralCode, remainingBalance, totalPaidOut }) {
+  return wrap(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:32px;margin-bottom:8px;">💸</div>
+      <h2 style="color:#22c55e;margin:0 0 8px;font-size:20px;font-weight:700;">Payout Processed</h2>
+      ${statusBadge('PAID', 'green')}
+    </div>
+
+    <p style="color:#ccc;font-size:14px;line-height:1.8;margin:0 0 20px;">
+      Hey <strong style="color:#fff;">${creatorName || 'there'}</strong>,<br/>
+      A payout has been processed for your <strong style="color:#ef4444;">Redline SMP</strong> referral account.
+    </p>
+
+    <div style="text-align:center;margin:24px 0;padding:20px;background:#0a0a0a;border:2px solid rgba(34,197,94,0.3);border-radius:12px;">
+      <div style="font-size:10px;color:#555;letter-spacing:2px;margin-bottom:8px;">AMOUNT PAID</div>
+      <div style="font-size:28px;font-family:'Courier New',monospace;color:#22c55e;font-weight:700;">₹${amount.toLocaleString('en-IN')}</div>
+    </div>
+
+    ${infoTable(
+      infoRow('Referral Code', `<span style="font-family:'Courier New',monospace;color:#ef4444;font-weight:700;">${referralCode}</span>`) +
+      infoRow('Amount', `<strong style="color:#22c55e;">₹${amount.toLocaleString('en-IN')}</strong>`) +
+      infoRow('Remaining Balance', `₹${remainingBalance.toLocaleString('en-IN')}`) +
+      infoRow('Total Paid Out', `₹${totalPaidOut.toLocaleString('en-IN')}`, true)
+    )}
+
+    <p style="color:#666;font-size:12px;line-height:1.7;margin:20px 0 0;">
+      If you have any questions about this payout, please reach out on Discord.
+    </p>
+
+    ${ctaButton('VIEW DASHBOARD', 'https://store.redlinesmp.fun/creator/dashboard')}
+  `);
+}

@@ -6,6 +6,8 @@ import AdminCollections from './AdminCollections';
 import AdminTickets from './AdminTickets';
 import AdminAnalytics from './AdminAnalytics';
 import AdminVotingLinks from './AdminVotingLinks';
+import AdminReferrals from './AdminReferrals';
+import AdminPayouts from './AdminPayouts';
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: '📊' },
@@ -14,6 +16,8 @@ const tabs = [
   { id: 'tickets', label: 'Tickets', icon: '🎫' },
   { id: 'analytics', label: 'Analytics', icon: '💰' },
   { id: 'voting', label: 'Voting Links', icon: '🗳️' },
+  { id: 'referrals', label: 'Referrals', icon: '🤝' },
+  { id: 'payouts', label: 'Payouts', icon: '💸' },
 ];
 
 const AdminDashboard = () => {
@@ -93,6 +97,8 @@ const AdminDashboard = () => {
       {activeTab === 'tickets' && <AdminTickets />}
       {activeTab === 'analytics' && <AdminAnalytics />}
       {activeTab === 'voting' && <AdminVotingLinks />}
+      {activeTab === 'referrals' && <AdminReferrals />}
+      {activeTab === 'payouts' && <AdminPayouts />}
     </main>
   );
 };

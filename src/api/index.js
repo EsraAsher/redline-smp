@@ -94,10 +94,10 @@ export const verifyStoreCode = (username, code) =>
   });
 
 // ─── Payments (Razorpay) ──────────────────────────────────
-export const createPaymentOrder = (mcUsername, email, items, storeCode) =>
+export const createPaymentOrder = (mcUsername, email, items, storeCode, referralCode) =>
   request('/payments/create-order', {
     method: 'POST',
-    body: JSON.stringify({ mcUsername, email, items, storeCode }),
+    body: JSON.stringify({ mcUsername, email, items, storeCode, ...(referralCode ? { referralCode } : {}) }),
   });
 
 // verifyPayment REMOVED — frontend must NEVER confirm payment status.
@@ -135,3 +135,50 @@ export const toggleVotingSite = (id) =>
 
 export const deleteVotingSite = (id) =>
   request(`/voting/${id}`, { method: 'DELETE' });
+
+// ─── Referral Program ─────────────────────────────────────
+export const submitReferralApplication = (data) =>
+  request('/referrals/apply', { method: 'POST', body: JSON.stringify(data) });
+
+export const fetchAdminApplications = () => request('/referrals/admin/applications');
+
+export const fetchAdminPartners = () => request('/referrals/admin/partners');
+
+export const approveReferral = (id, data) =>
+  request(`/referrals/admin/${id}/approve`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+export const rejectReferral = (id, reviewReason = '') =>
+  request(`/referrals/admin/${id}/reject`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reviewReason }),
+  });
+
+// ─── Payouts ──────────────────────────────────────────────
+export const fetchEligiblePayouts = () => request('/payouts/eligible');
+export const fetchPayoutHistory = (partnerId = '') =>
+  request(`/payouts/history${partnerId ? `?partnerId=${partnerId}` : ''}`);
+export const processPayout = (partnerId, amount, note = '') =>
+  request('/payouts/process', {
+    method: 'POST',
+    body: JSON.stringify({ partnerId, amount, ...(note ? { note } : {}) }),
+  });
+
+// ─── Creator Dashboard ───────────────────────────────
+function creatorRequest(url, options = {}) {
+  const token = localStorage.getItem('creator_token');
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return fetch(`${API_BASE}${url}`, { ...options, headers }).then(async (res) => {
+    const text = await res.text();
+    if (!text) throw new Error('Empty response');
+    const data = JSON.parse(text);
+    if (!res.ok) throw new Error(data.message || 'Request failed');
+    return data;
+  });
+}
+
+export const creatorVerify = () => creatorRequest('/creator/verify');
+export const fetchCreatorDashboard = () => creatorRequest('/creator/me');
