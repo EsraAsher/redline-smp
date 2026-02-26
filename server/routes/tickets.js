@@ -3,7 +3,7 @@ import Ticket from '../models/Ticket.js';
 import authMiddleware from '../middleware/auth.js';
 import {
   sendMail,
-  verifySMTP,
+  verifyEmail,
   ticketCreatedUserHTML,
   ticketCreatedAdminHTML,
   ticketResolvedHTML,
@@ -71,29 +71,27 @@ router.post('/create', async (req, res) => {
   }
 });
 
-// ─── ADMIN: Test SMTP connection ──────────────────────────
-// Placed BEFORE other /admin routes to avoid route conflicts.
-// No auth required — only returns SMTP config status, no sensitive data.
+// ─── ADMIN: Test email connection ─────────────────────────
+// No auth required — for diagnostics only.
 router.get('/admin/test-smtp', async (req, res) => {
   try {
-    // Step 1: Verify SMTP connection
-    const verification = await verifySMTP();
+    // Step 1: Verify Resend API key
+    const verification = await verifyEmail();
     if (!verification.ok) {
       return res.json({
         success: false,
         step: 'connection',
         error: verification.error,
-        config: { host: verification.host, port: verification.port },
       });
     }
 
     // Step 2: Send a real test email to admin
     const ok = await sendMail({
       to: ADMIN_EMAIL,
-      subject: 'SMTP Test — Redline SMP',
+      subject: 'Email Test — Redline SMP',
       html: `<div style="font-family:Arial;padding:20px;background:#111;color:#fff;border-radius:8px;">
-        <h2 style="color:#ef4444;">SMTP Test Successful</h2>
-        <p>If you're reading this, your email system is working correctly.</p>
+        <h2 style="color:#ef4444;">Email Test Successful</h2>
+        <p>If you're reading this, your Resend email system is working correctly.</p>
         <p style="color:#888;font-size:12px;">Sent at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
       </div>`,
     });
@@ -103,11 +101,11 @@ router.get('/admin/test-smtp', async (req, res) => {
       step: ok ? 'complete' : 'send',
       message: ok
         ? `Test email sent to ${ADMIN_EMAIL} — check your inbox (and spam folder)`
-        : 'SMTP connected but failed to send. Check Render logs for [Mailer] errors.',
-      config: { host: verification.host, port: verification.port, user: verification.user },
+        : 'Resend connected but failed to send. Check Render logs for [Mailer] errors.',
+      domains: verification.domains,
     });
   } catch (err) {
-    console.error('SMTP test error:', err);
+    console.error('Email test error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

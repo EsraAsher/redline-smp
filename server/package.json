@@ -19,6 +19,7 @@
     "mongoose": "^8.9.5",
     "nodemailer": "^8.0.1",
     "razorpay": "^2.9.6",
-    "rcon-client": "^4.2.5"
+    "rcon-client": "^4.2.5",
+    "resend": "^6.9.2"
   }
 }

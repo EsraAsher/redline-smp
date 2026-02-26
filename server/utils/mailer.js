@@ -1,95 +1,67 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-// ─── Lazy-initialised SMTP transporter ────────────────────
-let transporter = null;
-let smtpVerified = false;
+// ─── Lazy-initialised Resend client ───────────────────────
+let resend = null;
 
-function getTransporter() {
-  if (transporter) return transporter;
+function getClient() {
+  if (resend) return resend;
 
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.warn('⚠️  SMTP not configured — emails will be skipped');
-    console.warn('   Missing:', [
-      !SMTP_HOST && 'SMTP_HOST',
-      !SMTP_USER && 'SMTP_USER',
-      !SMTP_PASS && 'SMTP_PASS',
-    ].filter(Boolean).join(', '));
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    console.warn('⚠️  RESEND_API_KEY not set — emails will be skipped');
     return null;
   }
 
-  const port = parseInt(SMTP_PORT) || 587;
-  const isSSL = port === 465;
-
-  console.log(`[Mailer] Creating transporter → ${SMTP_HOST}:${port} (${isSSL ? 'SSL' : 'STARTTLS'}), user=${SMTP_USER}`);
-
-  transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port,
-    secure: isSSL,           // true for 465 (SSL), false for 587 (STARTTLS)
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-    tls: { rejectUnauthorized: false },   // accept self-signed / chain certs
-    connectionTimeout: 10000,             // 10s connect timeout
-    greetingTimeout: 10000,               // 10s greeting timeout
-    socketTimeout: 15000,                 // 15s socket timeout
-  });
-
-  // Verify SMTP connection on first init (async, non-blocking)
-  transporter.verify()
-    .then(() => {
-      smtpVerified = true;
-      console.log('[Mailer] ✅ SMTP connection verified successfully');
-    })
-    .catch((err) => {
-      console.error('[Mailer] ❌ SMTP verification FAILED:', err.message);
-      console.error('[Mailer]    Check SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS on Render');
-    });
-
-  return transporter;
+  resend = new Resend(key);
+  console.log('[Mailer] Resend client initialised');
+  return resend;
 }
 
-// ─── SMTP health check (for test endpoint) ────────────────
-export async function verifySMTP() {
-  const t = getTransporter();
-  if (!t) return { ok: false, error: 'SMTP not configured — missing env vars' };
+// ─── Health check (for test endpoint) ─────────────────────
+export async function verifyEmail() {
+  const client = getClient();
+  if (!client) return { ok: false, error: 'RESEND_API_KEY not configured' };
 
   try {
-    await t.verify();
-    return { ok: true, host: process.env.SMTP_HOST, port: process.env.SMTP_PORT, user: process.env.SMTP_USER };
+    // List domains to verify the API key works
+    const { data, error } = await client.domains.list();
+    if (error) return { ok: false, error: error.message };
+    const domains = (data || []).map(d => d.name);
+    return { ok: true, domains };
   } catch (err) {
-    return { ok: false, error: err.message, host: process.env.SMTP_HOST, port: process.env.SMTP_PORT };
+    return { ok: false, error: err.message };
   }
 }
 
 // ─── Reusable sendMail helper ─────────────────────────────
 // Returns true on success, false on failure (never throws).
 export async function sendMail({ to, subject, html }) {
-  const t = getTransporter();
-  if (!t) {
-    console.warn(`[Mailer] Skipped email to ${to} — no transporter`);
+  const client = getClient();
+  if (!client) {
+    console.warn(`[Mailer] Skipped email to ${to} — no Resend client`);
     return false;
   }
 
-  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const fromAddress = process.env.EMAIL_FROM || 'Redline SMP <noreply@redlinesmp.fun>';
 
   try {
-    const info = await t.sendMail({
-      from: `"Redline SMP" <${fromAddress}>`,
+    const { data, error } = await client.emails.send({
+      from: fromAddress,
       to,
-      replyTo: process.env.SMTP_USER,
+      reply_to: process.env.REPLY_TO || 'tickets@redlinesmp.fun',
       subject,
       html,
-      headers: {
-        'X-Mailer': 'RedlineSMP-Tickets',
-        'List-Unsubscribe': `<mailto:${fromAddress}?subject=unsubscribe>`,
-      },
     });
-    console.log(`[Mailer] ✅ Sent to ${to} | subject="${subject}" | messageId=${info.messageId}`);
+
+    if (error) {
+      console.error(`[Mailer] ❌ Failed to send to ${to}:`, error.message);
+      return false;
+    }
+
+    console.log(`[Mailer] ✅ Sent to ${to} | subject="${subject}" | id=${data?.id}`);
     return true;
   } catch (err) {
     console.error(`[Mailer] ❌ Failed to send to ${to}:`, err.message);
-    console.error(`[Mailer]    Code: ${err.code || 'N/A'} | Command: ${err.command || 'N/A'}`);
     return false;
   }
 }
