@@ -21,6 +21,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust Render's (and other reverse proxies') X-Forwarded-For header
+// Required for express-rate-limit to correctly identify client IPs
+app.set('trust proxy', 1);
+
 // ─── CORS ─────────────────────────────────────────────────
 // Allow local dev + any Vercel deployment + custom FRONTEND_URL
 const allowedOrigins = [
