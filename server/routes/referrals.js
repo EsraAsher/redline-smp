@@ -5,7 +5,7 @@ import ReferralPartner from '../models/ReferralPartner.js';
 import CommissionAdjustment from '../models/CommissionAdjustment.js';
 import authMiddleware from '../middleware/auth.js';
 import { sendMail, referralApplicationReceivedHTML, referralApplicationAdminHTML, referralApprovedHTML, referralRejectedHTML } from '../utils/mailer.js';
-import { sendDiscordWebhook, referralApplicationEmbed, referralApprovedEmbed, referralRejectedEmbed } from '../utils/discord.js';
+import { sendDiscordEvent } from '../utils/discord.js';
 
 const router = Router();
 
@@ -17,33 +17,6 @@ const applyLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Too many applications. Please try again later.' },
 });
-
-// ─── Helper: assign Creator role via Discord API ──────────
-// Called from approval handler. Uses bot token directly.
-// Non-fatal: failures are logged but never break the approval flow.
-async function assignCreatorRoleViaBot(discordId) {
-  const token = process.env.DISCORD_BOT_TOKEN;
-  const guildId = process.env.DISCORD_GUILD_ID;
-  const roleId = process.env.DISCORD_CREATOR_ROLE_ID;
-
-  if (!token || !guildId || !roleId) {
-    console.warn('[Roles] Missing DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, or DISCORD_CREATOR_ROLE_ID — skipping role assignment.');
-    return;
-  }
-
-  const url = `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`;
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: { Authorization: `Bot ${token}` },
-  });
-
-  if (res.status === 204 || res.ok) {
-    console.log(`[Roles] ✅ Assigned Creator role to Discord user ${discordId}`);
-  } else {
-    const body = await res.text().catch(() => '');
-    console.warn(`[Roles] Failed to assign role (${res.status}): ${body}`);
-  }
-}
 
 // ─── Helper: auto-generate a unique referral code ─────────
 async function generateUniqueCode(baseName) {
@@ -137,7 +110,7 @@ router.post('/apply', applyLimiter, async (req, res) => {
     }
 
     // Discord notification
-    sendDiscordWebhook(referralApplicationEmbed(templateData)).catch(() => {});
+    sendDiscordEvent('referral_application', templateData).catch(() => {});
 
     res.status(201).json({
       message: 'Application submitted successfully! You will receive an email once it is reviewed.',
@@ -248,16 +221,13 @@ router.patch('/admin/:id/approve', authMiddleware, async (req, res) => {
       }),
     }).catch(() => {});
 
-    sendDiscordWebhook(referralApprovedEmbed({
+    sendDiscordEvent('referral_approved', {
       creatorName: application.creatorName,
       referralCode: code,
       discountPercent: partner.discountPercent,
       commissionPercent: partner.commissionPercent,
       reviewedBy: req.admin.username,
-    })).catch(() => {});
-
-    // Assign Creator role via bot (non-blocking, non-fatal)
-    assignCreatorRoleViaBot(application.discordId).catch(() => {});
+    }).catch(() => {});
 
     res.json({
       message: 'Referral approved successfully.',
@@ -298,10 +268,10 @@ router.patch('/admin/:id/reject', authMiddleware, async (req, res) => {
       html: referralRejectedHTML({ creatorName: application.creatorName }),
     }).catch(() => {});
 
-    sendDiscordWebhook(referralRejectedEmbed({
+    sendDiscordEvent('referral_rejected', {
       creatorName: application.creatorName,
       reviewedBy: req.admin.username,
-    })).catch(() => {});
+    }).catch(() => {});
 
     res.json({ message: 'Application rejected.', application });
   } catch (err) {

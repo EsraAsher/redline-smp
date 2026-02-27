@@ -32,12 +32,29 @@ services:
         value: "25575"
       - key: RCON_PASSWORD
         sync: false
-      - key: DISCORD_BOT_TOKEN
+      # ── Discord OAuth (Creator login) ──
+      - key: DISCORD_CLIENT_ID
         sync: false
-      - key: DISCORD_GUILD_ID
+      - key: DISCORD_CLIENT_SECRET
         sync: false
-      - key: DISCORD_CREATOR_ROLE_ID
+      - key: DISCORD_REDIRECT_URI
         sync: false
+      # ── Discord Webhooks ──
+      - key: DISCORD_WEBHOOK_PUBLIC_PURCHASES
+        sync: false
+      - key: DISCORD_WEBHOOK_PUBLIC_CREATORS
+        sync: false
+      - key: DISCORD_WEBHOOK_SUPPORT_APPLICATIONS
+        sync: false
+      - key: DISCORD_WEBHOOK_SUPPORT_APPROVALS
+        sync: false
+      - key: DISCORD_WEBHOOK_SUPPORT_REJECTIONS
+        sync: false
+      - key: DISCORD_WEBHOOK_SUPPORT_FRAUD
+        sync: false
+      - key: DISCORD_WEBHOOK_SUPPORT_PAYOUTS
+        sync: false
+      # ── Bot API secret (for Replit bot → /api/bot/ routes) ──
       - key: BOT_INTERNAL_SECRET
         sync: false
 

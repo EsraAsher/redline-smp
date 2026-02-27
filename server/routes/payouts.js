@@ -4,7 +4,7 @@ import ReferralApplication from '../models/ReferralApplication.js';
 import Payout from '../models/Payout.js';
 import authMiddleware from '../middleware/auth.js';
 import { sendMail, payoutProcessedHTML } from '../utils/mailer.js';
-import { sendDiscordWebhook, payoutProcessedEmbed } from '../utils/discord.js';
+import { sendDiscordEvent } from '../utils/discord.js';
 
 const router = Router();
 
@@ -136,13 +136,13 @@ router.post('/process', authMiddleware, async (req, res) => {
       }).catch(() => {});
     }
 
-    sendDiscordWebhook(payoutProcessedEmbed({
+    sendDiscordEvent('payout_processed', {
       creatorName: partner.creatorName,
       referralCode: partner.referralCode,
       amount: payoutAmount,
       remainingBalance: updated.pendingCommission,
       processedBy: req.admin.username,
-    })).catch(() => {});
+    }).catch(() => {});
 
     res.json({
       message: `Payout of ₹${payoutAmount} processed for ${partner.creatorName}.`,
