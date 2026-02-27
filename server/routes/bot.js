@@ -4,6 +4,12 @@
  */
 import { Router } from 'express';
 import ReferralPartner from '../models/ReferralPartner.js';
+import ReferralApplication from '../models/ReferralApplication.js';
+import PayoutRequest from '../models/PayoutRequest.js';
+import Payout from '../models/Payout.js';
+import { getSettings } from '../models/Settings.js';
+import { sendMail, payoutProcessedHTML, payoutRejectedHTML } from '../utils/mailer.js';
+import { sendDiscordEvent } from '../utils/discord.js';
 
 const router = Router();
 
@@ -42,6 +48,420 @@ router.get('/referral/:discordId', async (req, res) => {
     });
   } catch (err) {
     console.error('[Bot API] Error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/bot/request-payout
+// Body: { discordId, realName, method, payoutDetails }
+// Creator requests a payout via the Discord bot.
+// ═══════════════════════════════════════════════════════════
+router.post('/request-payout', async (req, res) => {
+  try {
+    const { discordId, realName, method, payoutDetails } = req.body;
+
+    if (!discordId) {
+      return res.status(400).json({ message: 'discordId is required.' });
+    }
+
+    const partner = await ReferralPartner.findOne({ discordId });
+    if (!partner) {
+      return res.status(404).json({ message: 'Partner not found.' });
+    }
+
+    // Status check
+    if (partner.status !== 'active') {
+      return res.status(403).json({ message: `Account is ${partner.status}. Cannot request payout.` });
+    }
+
+    // Dynamic threshold
+    const settings = await getSettings();
+    const threshold = settings.globalPayoutThreshold;
+
+    if (partner.pendingCommission < threshold) {
+      return res.status(400).json({
+        message: `Need at least ₹${threshold} pending commission. Current: ₹${partner.pendingCommission}.`,
+      });
+    }
+
+    // Check for existing open request
+    const existing = await PayoutRequest.findOne({
+      partnerId: partner._id,
+      status: { $in: ['pending', 'processing'] },
+    });
+    if (existing) {
+      return res.status(409).json({
+        message: 'An open payout request already exists. Wait for it to be processed.',
+        existingRequest: {
+          _id: existing._id,
+          amount: existing.amount,
+          status: existing.status,
+          requestedAt: existing.requestedAt,
+        },
+      });
+    }
+
+    // Validate fields
+    if (!realName?.trim()) {
+      return res.status(400).json({ message: 'realName is required.' });
+    }
+
+    const validMethods = ['bank', 'upi', 'qr'];
+    if (!validMethods.includes(method)) {
+      return res.status(400).json({ message: 'method must be bank, upi, or qr.' });
+    }
+
+    if (method === 'bank') {
+      if (!payoutDetails?.accountNumber || !payoutDetails?.ifscCode || !payoutDetails?.accountHolderName) {
+        return res.status(400).json({ message: 'Bank details require accountNumber, ifscCode, and accountHolderName.' });
+      }
+    } else if (method === 'upi') {
+      if (!payoutDetails?.upiId) {
+        return res.status(400).json({ message: 'UPI ID is required.' });
+      }
+    } else if (method === 'qr') {
+      if (!payoutDetails?.qrImageUrl) {
+        return res.status(400).json({ message: 'QR code image URL is required.' });
+      }
+    }
+
+    // Create payout request — amount is the full pending commission
+    const pr = await PayoutRequest.create({
+      partnerId: partner._id,
+      amount: partner.pendingCommission,
+      creatorName: partner.creatorName,
+      referralCode: partner.referralCode,
+      realName: realName.trim(),
+      method,
+      payoutDetails: payoutDetails || {},
+      qrImageUrl: method === 'qr' ? payoutDetails?.qrImageUrl : undefined,
+    });
+
+    // Discord notification (fire-and-forget)
+    sendDiscordEvent('payout_requested', {
+      creatorName: partner.creatorName,
+      referralCode: partner.referralCode,
+      amount: partner.pendingCommission,
+      method: method.toUpperCase(),
+    }).catch(() => {});
+
+    res.status(201).json({
+      message: `Payout request submitted for ₹${partner.pendingCommission}.`,
+      request: {
+        _id: pr._id,
+        amount: pr.amount,
+        method: pr.method,
+        status: pr.status,
+        requestedAt: pr.requestedAt,
+      },
+    });
+  } catch (err) {
+    console.error('[Bot API] request-payout error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/bot/admin/approve
+// Body: { discordId }
+// Approves the pending payout request for a creator.
+// ═══════════════════════════════════════════════════════════
+router.post('/admin/approve', async (req, res) => {
+  try {
+    const { discordId } = req.body;
+    if (!discordId) {
+      return res.status(400).json({ message: 'discordId is required.' });
+    }
+
+    const partner = await ReferralPartner.findOne({ discordId });
+    if (!partner) {
+      return res.status(404).json({ message: 'Partner not found.' });
+    }
+
+    // Find the pending payout request
+    const pr = await PayoutRequest.findOne({
+      partnerId: partner._id,
+      status: 'pending',
+    });
+    if (!pr) {
+      return res.status(404).json({ message: 'No pending payout request found for this creator.' });
+    }
+
+    // Move to processing (approved by admin, awaiting payment)
+    pr.status = 'processing';
+    await pr.save();
+
+    res.json({
+      message: `Payout request for ${partner.creatorName} approved and marked as processing.`,
+      request: {
+        _id: pr._id,
+        amount: pr.amount,
+        method: pr.method,
+        status: pr.status,
+        creatorName: pr.creatorName,
+        referralCode: pr.referralCode,
+      },
+    });
+  } catch (err) {
+    console.error('[Bot API] admin/approve error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/bot/admin/reject
+// Body: { discordId, reason? }
+// Rejects the open payout request for a creator.
+// ═══════════════════════════════════════════════════════════
+router.post('/admin/reject', async (req, res) => {
+  try {
+    const { discordId, reason } = req.body;
+    if (!discordId) {
+      return res.status(400).json({ message: 'discordId is required.' });
+    }
+
+    const partner = await ReferralPartner.findOne({ discordId });
+    if (!partner) {
+      return res.status(404).json({ message: 'Partner not found.' });
+    }
+
+    // Find the open (pending or processing) payout request
+    const pr = await PayoutRequest.findOne({
+      partnerId: partner._id,
+      status: { $in: ['pending', 'processing'] },
+    });
+    if (!pr) {
+      return res.status(404).json({ message: 'No open payout request found for this creator.' });
+    }
+
+    pr.status = 'rejected';
+    pr.rejectionReason = reason?.trim() || '';
+    pr.processedAt = new Date();
+    await pr.save();
+
+    // Send rejection email (fire-and-forget)
+    if (partner.applicationId) {
+      const app = await ReferralApplication.findById(partner.applicationId).select('email');
+      if (app?.email) {
+        sendMail({
+          to: app.email,
+          subject: '❌ Payout Request Rejected — Redline SMP',
+          html: payoutRejectedHTML({
+            creatorName: pr.creatorName,
+            amount: pr.amount,
+            reason: pr.rejectionReason || 'No reason provided.',
+          }),
+        }).catch(() => {});
+      }
+    }
+
+    sendDiscordEvent('payout_rejected', {
+      creatorName: pr.creatorName,
+      referralCode: pr.referralCode,
+      amount: pr.amount,
+      reason: pr.rejectionReason || 'No reason provided.',
+      rejectedBy: 'Bot Admin',
+    }).catch(() => {});
+
+    res.json({
+      message: `Payout request for ${partner.creatorName} rejected.`,
+      request: {
+        _id: pr._id,
+        amount: pr.amount,
+        status: pr.status,
+        rejectionReason: pr.rejectionReason,
+      },
+    });
+  } catch (err) {
+    console.error('[Bot API] admin/reject error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/bot/admin/payout-complete
+// Body: { discordId, transactionId }
+// Completes the open payout request — moves commission, creates
+// Payout record, triggers email + Discord webhook.
+// ═══════════════════════════════════════════════════════════
+router.post('/admin/payout-complete', async (req, res) => {
+  try {
+    const { discordId, transactionId } = req.body;
+    if (!discordId) {
+      return res.status(400).json({ message: 'discordId is required.' });
+    }
+    if (!transactionId?.trim()) {
+      return res.status(400).json({ message: 'transactionId is required.' });
+    }
+
+    const partner = await ReferralPartner.findOne({ discordId });
+    if (!partner) {
+      return res.status(404).json({ message: 'Partner not found.' });
+    }
+
+    // Find the open (pending or processing) payout request
+    const pr = await PayoutRequest.findOne({
+      partnerId: partner._id,
+      status: { $in: ['pending', 'processing'] },
+    });
+    if (!pr) {
+      return res.status(404).json({ message: 'No open payout request found for this creator.' });
+    }
+
+    // Verify sufficient pending commission
+    if (pr.amount > partner.pendingCommission) {
+      return res.status(400).json({
+        message: `Payout amount (₹${pr.amount}) exceeds current pending commission (₹${partner.pendingCommission}).`,
+      });
+    }
+
+    // Atomic update on partner — move pending → paid
+    const updated = await ReferralPartner.findOneAndUpdate(
+      { _id: partner._id, pendingCommission: { $gte: pr.amount } },
+      { $inc: { pendingCommission: -pr.amount, totalPaidOut: pr.amount } },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(409).json({ message: 'Payout failed — pending commission changed. Refresh and retry.' });
+    }
+
+    // Update payout request
+    pr.status = 'completed';
+    pr.transactionId = transactionId.trim();
+    pr.processedAt = new Date();
+    await pr.save();
+
+    // Create Payout record (for history)
+    await Payout.create({
+      partnerId: partner._id,
+      amount: pr.amount,
+      creatorName: pr.creatorName,
+      referralCode: pr.referralCode,
+      note: `Bot payout request #${pr._id} — ${pr.method.toUpperCase()} — Txn: ${transactionId.trim()}`,
+    });
+
+    // Notifications (fire-and-forget)
+    if (partner.applicationId) {
+      const app = await ReferralApplication.findById(partner.applicationId).select('email');
+      if (app?.email) {
+        sendMail({
+          to: app.email,
+          subject: '💸 Payout Processed — Redline SMP',
+          html: payoutProcessedHTML({
+            creatorName: partner.creatorName,
+            amount: pr.amount,
+            referralCode: partner.referralCode,
+            remainingBalance: updated.pendingCommission,
+            totalPaidOut: updated.totalPaidOut,
+          }),
+        }).catch(() => {});
+      }
+    }
+
+    sendDiscordEvent('payout_processed', {
+      creatorName: partner.creatorName,
+      referralCode: partner.referralCode,
+      amount: pr.amount,
+      remainingBalance: updated.pendingCommission,
+      processedBy: 'Bot Admin',
+    }).catch(() => {});
+
+    res.json({
+      message: `Payout of ₹${pr.amount} completed for ${partner.creatorName}.`,
+      request: {
+        _id: pr._id,
+        amount: pr.amount,
+        status: pr.status,
+        transactionId: pr.transactionId,
+      },
+      partner: {
+        pendingCommission: updated.pendingCommission,
+        totalPaidOut: updated.totalPaidOut,
+      },
+    });
+  } catch (err) {
+    console.error('[Bot API] admin/payout-complete error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/bot/admin/pause
+// Body: { discordId }
+// Sets partner status to "paused".
+// ═══════════════════════════════════════════════════════════
+router.post('/admin/pause', async (req, res) => {
+  try {
+    const { discordId } = req.body;
+    if (!discordId) {
+      return res.status(400).json({ message: 'discordId is required.' });
+    }
+
+    const partner = await ReferralPartner.findOne({ discordId });
+    if (!partner) {
+      return res.status(404).json({ message: 'Partner not found.' });
+    }
+
+    if (partner.status === 'paused') {
+      return res.status(400).json({ message: `${partner.creatorName} is already paused.` });
+    }
+    if (partner.status === 'banned') {
+      return res.status(400).json({ message: `${partner.creatorName} is banned. Unban first.` });
+    }
+
+    partner.status = 'paused';
+    await partner.save();
+
+    res.json({
+      message: `${partner.creatorName} has been paused.`,
+      partner: {
+        creatorName: partner.creatorName,
+        referralCode: partner.referralCode,
+        status: partner.status,
+      },
+    });
+  } catch (err) {
+    console.error('[Bot API] admin/pause error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/bot/admin/ban
+// Body: { discordId }
+// Sets partner status to "banned".
+// ═══════════════════════════════════════════════════════════
+router.post('/admin/ban', async (req, res) => {
+  try {
+    const { discordId } = req.body;
+    if (!discordId) {
+      return res.status(400).json({ message: 'discordId is required.' });
+    }
+
+    const partner = await ReferralPartner.findOne({ discordId });
+    if (!partner) {
+      return res.status(404).json({ message: 'Partner not found.' });
+    }
+
+    if (partner.status === 'banned') {
+      return res.status(400).json({ message: `${partner.creatorName} is already banned.` });
+    }
+
+    partner.status = 'banned';
+    await partner.save();
+
+    res.json({
+      message: `${partner.creatorName} has been banned.`,
+      partner: {
+        creatorName: partner.creatorName,
+        referralCode: partner.referralCode,
+        status: partner.status,
+      },
+    });
+  } catch (err) {
+    console.error('[Bot API] admin/ban error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
