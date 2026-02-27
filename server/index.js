@@ -14,6 +14,7 @@ import votingRoutes from './routes/voting.js';
 import referralRoutes from './routes/referrals.js';
 import creatorRoutes from './routes/creator.js';
 import payoutRoutes from './routes/payouts.js';
+import settingsRoutes from './routes/settings.js';
 import botRoutes from './routes/bot.js';
 
 dotenv.config();
@@ -69,6 +70,7 @@ app.use('/api/voting', votingRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/creator', creatorRoutes);
 app.use('/api/payouts', payoutRoutes);
+app.use('/api/settings', settingsRoutes);
 app.use('/api/bot', botRoutes);
 
 // Health check

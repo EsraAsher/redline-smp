@@ -68,7 +68,7 @@ const referralPartnerSchema = new mongoose.Schema({
   },
   payoutThreshold: {
     type: Number,
-    default: 300,
+    default: 0,
   },
 
   // ─── Limits (optional) ────────────────────────────────────

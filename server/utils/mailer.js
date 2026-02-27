@@ -409,6 +409,32 @@ export function payoutProcessedHTML({ creatorName, amount, referralCode, remaini
       If you have any questions about this payout, please reach out on Discord.
     </p>
 
-    ${ctaButton('VIEW DASHBOARD', 'https://store.redlinesmp.fun/creator/dashboard')}
+    ${ctaButton('VIEW DASHBOARD', 'https://redlinesmp.fun/creator/dashboard')}
+  `);
+}
+
+export function payoutRejectedHTML({ creatorName, amount, reason }) {
+  return wrap(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:32px;margin-bottom:8px;">❌</div>
+      <h2 style="color:#ef4444;margin:0 0 8px;font-size:20px;font-weight:700;">Payout Request Rejected</h2>
+      ${statusBadge('REJECTED', 'red')}
+    </div>
+
+    <p style="color:#ccc;font-size:14px;line-height:1.8;margin:0 0 20px;">
+      Hey <strong style="color:#fff;">${creatorName || 'there'}</strong>,<br/>
+      Your payout request for <strong style="color:#ef4444;">₹${amount.toLocaleString('en-IN')}</strong> has been rejected.
+    </p>
+
+    ${infoTable(
+      infoRow('Requested Amount', `<strong style="color:#ef4444;">₹${amount.toLocaleString('en-IN')}</strong>`) +
+      infoRow('Reason', reason || 'No reason provided.', true)
+    )}
+
+    <p style="color:#666;font-size:12px;line-height:1.7;margin:20px 0 0;">
+      If you believe this is an error, please reach out on Discord. You can submit a new payout request once the issue is resolved.
+    </p>
+
+    ${ctaButton('VIEW DASHBOARD', 'https://redlinesmp.fun/creator/dashboard')}
   `);
 }

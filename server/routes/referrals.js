@@ -197,7 +197,7 @@ router.patch('/admin/:id/approve', authMiddleware, async (req, res) => {
       totalCommissionEarned: 0,
       pendingCommission: 0,
       totalPaidOut: 0,
-      payoutThreshold: 300,
+      payoutThreshold: 0,
       status: 'active',
       applicationId: application._id,
     });

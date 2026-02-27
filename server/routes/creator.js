@@ -9,7 +9,10 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import ReferralPartner from '../models/ReferralPartner.js';
 import Order from '../models/Order.js';
+import PayoutRequest from '../models/PayoutRequest.js';
+import { getSettings } from '../models/Settings.js';
 import creatorAuthMiddleware from '../middleware/creatorAuth.js';
+import { sendDiscordEvent } from '../utils/discord.js';
 
 const router = Router();
 
@@ -121,6 +124,8 @@ router.get('/auth/discord/callback', async (req, res) => {
 router.get('/me', creatorAuthMiddleware, async (req, res) => {
   try {
     const c = req.creator;
+    const settings = await getSettings();
+    const threshold = settings.globalPayoutThreshold;
 
     res.json({
       creatorName: c.creatorName,
@@ -134,8 +139,8 @@ router.get('/me', creatorAuthMiddleware, async (req, res) => {
       totalCommissionEarned: c.totalCommissionEarned,
       pendingCommission: c.pendingCommission,
       totalPaidOut: c.totalPaidOut,
-      payoutThreshold: c.payoutThreshold,
-      payoutEligible: c.pendingCommission >= c.payoutThreshold,
+      payoutThreshold: threshold,
+      payoutEligible: c.pendingCommission >= threshold,
       maxUses: c.maxUses || null,
       expiresAt: c.expiresAt || null,
       status: c.status,
@@ -185,6 +190,115 @@ router.get('/me/insights', creatorAuthMiddleware, async (req, res) => {
 // ─── 5. Verify creator token (used by frontend on reload) ─
 router.get('/verify', creatorAuthMiddleware, async (req, res) => {
   res.json({ valid: true, creatorName: req.creator.creatorName });
+});
+
+// ─── 6. Submit Payout Request ─────────────────────────────
+router.post('/me/payout-request', creatorAuthMiddleware, async (req, res) => {
+  try {
+    const c = req.creator;
+
+    // Status check
+    if (c.status !== 'active') {
+      return res.status(403).json({ message: 'Your account is not active. Contact an admin.' });
+    }
+
+    // Dynamic threshold
+    const settings = await getSettings();
+    const threshold = settings.globalPayoutThreshold;
+
+    if (c.pendingCommission < threshold) {
+      return res.status(400).json({
+        message: `You need at least ₹${threshold} pending commission. Current: ₹${c.pendingCommission}.`,
+      });
+    }
+
+    // Check for existing open request
+    const existing = await PayoutRequest.findOne({
+      partnerId: c._id,
+      status: { $in: ['pending', 'processing'] },
+    });
+    if (existing) {
+      return res.status(409).json({
+        message: 'You already have an open payout request. Wait for it to be processed before submitting another.',
+      });
+    }
+
+    // Validate fields
+    const { realName, method, payoutDetails } = req.body;
+
+    if (!realName?.trim()) {
+      return res.status(400).json({ message: 'Real name is required.' });
+    }
+
+    const validMethods = ['bank', 'upi', 'qr'];
+    if (!validMethods.includes(method)) {
+      return res.status(400).json({ message: 'Payment method must be bank, upi, or qr.' });
+    }
+
+    // Validate payment details per method
+    if (method === 'bank') {
+      if (!payoutDetails?.accountNumber || !payoutDetails?.ifscCode || !payoutDetails?.accountHolderName) {
+        return res.status(400).json({ message: 'Bank details require accountNumber, ifscCode, and accountHolderName.' });
+      }
+    } else if (method === 'upi') {
+      if (!payoutDetails?.upiId) {
+        return res.status(400).json({ message: 'UPI ID is required.' });
+      }
+    } else if (method === 'qr') {
+      if (!payoutDetails?.qrImageUrl) {
+        return res.status(400).json({ message: 'QR code image URL is required.' });
+      }
+    }
+
+    // Create payout request — amount is the full pending commission (backend decides)
+    const pr = await PayoutRequest.create({
+      partnerId: c._id,
+      amount: c.pendingCommission,
+      creatorName: c.creatorName,
+      referralCode: c.referralCode,
+      realName: realName.trim(),
+      method,
+      payoutDetails: payoutDetails || {},
+      qrImageUrl: method === 'qr' ? payoutDetails?.qrImageUrl : undefined,
+    });
+
+    // Discord notification (fire-and-forget)
+    sendDiscordEvent('payout_requested', {
+      creatorName: c.creatorName,
+      referralCode: c.referralCode,
+      amount: c.pendingCommission,
+      method: method.toUpperCase(),
+    }).catch(() => {});
+
+    res.status(201).json({
+      message: 'Payout request submitted successfully. You will be notified once it is processed.',
+      request: {
+        _id: pr._id,
+        amount: pr.amount,
+        method: pr.method,
+        status: pr.status,
+        requestedAt: pr.requestedAt,
+      },
+    });
+  } catch (err) {
+    console.error('[Creator] Payout request error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ─── 7. Get Payout Request Status ─────────────────────────
+router.get('/me/payout-request', creatorAuthMiddleware, async (req, res) => {
+  try {
+    // Return the most recent request (or the active one)
+    const pr = await PayoutRequest.findOne({ partnerId: req.creator._id })
+      .sort({ requestedAt: -1 })
+      .select('amount method status transactionId rejectionReason requestedAt processedAt');
+
+    res.json({ request: pr || null });
+  } catch (err) {
+    console.error('[Creator] Payout status error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 export default router;

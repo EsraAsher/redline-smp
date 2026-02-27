@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreatorAuth } from '../context/CreatorAuthContext';
-import { fetchCreatorDashboard, fetchCreatorInsights } from '../api';
+import { fetchCreatorDashboard, fetchCreatorInsights, fetchCreatorPayoutStatus, submitCreatorPayoutRequest } from '../api';
 
 // ─── Helpers ────────────────────────────────────────────
 function getSessionExpiry() {
@@ -46,15 +46,228 @@ const Toast = ({ toasts }) => (
   </div>
 );
 
+// ─── Payout Request Modal ────────────────────────────────
+const PayoutRequestModal = ({ pendingCommission, onClose, onSuccess }) => {
+  const [method, setMethod] = useState('upi');
+  const [realName, setRealName] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [qrImageUrl, setQrImageUrl] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    setError('');
+    if (!realName.trim()) return setError('Real name is required.');
+    if (!confirmed) return setError('Please confirm the details are correct.');
+
+    let payoutDetails = {};
+    if (method === 'upi') {
+      if (!upiId.trim()) return setError('UPI ID is required.');
+      payoutDetails = { upiId: upiId.trim() };
+    } else if (method === 'bank') {
+      if (!accountNumber.trim() || !ifscCode.trim() || !accountHolderName.trim()) {
+        return setError('All bank details are required.');
+      }
+      payoutDetails = {
+        accountNumber: accountNumber.trim(),
+        ifscCode: ifscCode.trim().toUpperCase(),
+        accountHolderName: accountHolderName.trim(),
+      };
+    } else if (method === 'qr') {
+      if (!qrImageUrl.trim()) return setError('QR code image URL is required.');
+      payoutDetails = { qrImageUrl: qrImageUrl.trim() };
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await submitCreatorPayoutRequest({
+        realName: realName.trim(),
+        method,
+        payoutDetails,
+      });
+      onSuccess(res.request);
+    } catch (err) {
+      setError(err.message || 'Failed to submit request.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const methods = [
+    { id: 'upi', label: 'UPI', icon: '📱' },
+    { id: 'bank', label: 'Bank Transfer', icon: '🏦' },
+    { id: 'qr', label: 'QR Code', icon: '📷' },
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => !submitting && onClose()}>
+      <div className="bg-dark-surface border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div>
+          <h3 className="font-pixel text-sm text-green-400 mb-1">REQUEST PAYOUT</h3>
+          <p className="text-gray-400 text-sm">
+            Amount: <span className="text-green-400 font-semibold">₹{pendingCommission.toLocaleString('en-IN')}</span>
+            <span className="text-gray-600 text-xs ml-2">(full pending balance)</span>
+          </p>
+        </div>
+
+        {/* Real Name */}
+        <div>
+          <label className="text-gray-400 text-xs block mb-1">Real Name *</label>
+          <input
+            type="text"
+            value={realName}
+            onChange={(e) => setRealName(e.target.value)}
+            className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-green-500/50 focus:outline-none transition-colors"
+            placeholder="Your legal name (for payment verification)"
+          />
+        </div>
+
+        {/* Payment Method */}
+        <div>
+          <label className="text-gray-400 text-xs block mb-2">Payment Method *</label>
+          <div className="flex gap-2">
+            {methods.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setMethod(m.id)}
+                className={`flex-1 py-2.5 text-xs rounded-lg border transition-all ${
+                  method === m.id
+                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                }`}
+              >
+                <span className="block text-base mb-0.5">{m.icon}</span>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* UPI Fields */}
+        {method === 'upi' && (
+          <div>
+            <label className="text-gray-400 text-xs block mb-1">UPI ID *</label>
+            <input
+              type="text"
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-green-500/50 focus:outline-none transition-colors"
+              placeholder="yourname@upi"
+            />
+          </div>
+        )}
+
+        {/* Bank Fields */}
+        {method === 'bank' && (
+          <div className="space-y-3">
+            <div>
+              <label className="text-gray-400 text-xs block mb-1">Account Holder Name *</label>
+              <input
+                type="text"
+                value={accountHolderName}
+                onChange={(e) => setAccountHolderName(e.target.value)}
+                className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-green-500/50 focus:outline-none transition-colors"
+                placeholder="Name on bank account"
+              />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs block mb-1">Account Number *</label>
+              <input
+                type="text"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-green-500/50 focus:outline-none transition-colors"
+                placeholder="Bank account number"
+              />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs block mb-1">IFSC Code *</label>
+              <input
+                type="text"
+                value={ifscCode}
+                onChange={(e) => setIfscCode(e.target.value)}
+                className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-green-500/50 focus:outline-none transition-colors uppercase"
+                placeholder="e.g. SBIN0001234"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* QR Fields */}
+        {method === 'qr' && (
+          <div>
+            <label className="text-gray-400 text-xs block mb-1">QR Code Image URL *</label>
+            <input
+              type="url"
+              value={qrImageUrl}
+              onChange={(e) => setQrImageUrl(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-green-500/50 focus:outline-none transition-colors"
+              placeholder="https://... (upload to imgur, etc.)"
+            />
+            <p className="text-gray-600 text-xs mt-1">Upload your payment QR to any image host and paste the link</p>
+            {qrImageUrl && (
+              <div className="mt-2 bg-black/30 border border-white/10 rounded-lg p-2 flex justify-center">
+                <img src={qrImageUrl} alt="QR Preview" className="max-h-32 rounded" onError={(e) => e.target.style.display = 'none'} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Confirmation */}
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+            className="mt-0.5 accent-green-500"
+          />
+          <span className="text-xs text-gray-400">
+            I confirm the payment details are correct. Incorrect details may delay my payout.
+          </span>
+        </label>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg p-3">
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => !submitting && onClose()}
+            disabled={submitting}
+            className="flex-1 py-2.5 text-xs font-pixel bg-white/5 border border-white/10 text-gray-400 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            CANCEL
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !confirmed}
+            className="flex-1 py-2.5 text-xs font-pixel bg-green-500/20 border border-green-500/30 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors disabled:opacity-50"
+          >
+            {submitting ? 'SUBMITTING...' : `REQUEST ₹${pendingCommission.toLocaleString('en-IN')}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Page ────────────────────────────────────────────────
 const CreatorDashboardPage = () => {
   const { creator, loading: authLoading, logout } = useCreatorAuth();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [insights, setInsights] = useState(null);
+  const [payoutStatus, setPayoutStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [toasts, setToasts] = useState([]);
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
 
   const showToast = useCallback((msg) => {
     const id = Date.now();
@@ -78,13 +291,15 @@ const CreatorDashboardPage = () => {
     if (!creator) return;
     (async () => {
       try {
-        const [dashRes, insightsRes] = await Promise.allSettled([
+        const [dashRes, insightsRes, payoutRes] = await Promise.allSettled([
           fetchCreatorDashboard(),
           fetchCreatorInsights(),
+          fetchCreatorPayoutStatus(),
         ]);
         if (dashRes.status === 'fulfilled') setData(dashRes.value);
         else throw new Error(dashRes.reason?.message || 'Failed to load dashboard.');
         if (insightsRes.status === 'fulfilled') setInsights(insightsRes.value);
+        if (payoutRes.status === 'fulfilled') setPayoutStatus(payoutRes.value?.request || null);
       } catch (err) {
         setError(err.message || 'Failed to load dashboard data.');
       } finally {
@@ -264,11 +479,69 @@ const CreatorDashboardPage = () => {
               style={{ width: `${payoutPct}%` }}
             />
           </div>
-          <p className="text-xs mt-2 text-gray-600">
-            {payoutPct >= 100
-              ? '✅ Eligible for payout — contact an admin to request one'
-              : `₹${Math.max(0, (data?.payoutThreshold ?? 300) - (data?.pendingCommission ?? 0)).toLocaleString('en-IN')} more to reach payout threshold`}
-          </p>
+
+          {/* Payout status / request button */}
+          {payoutStatus && ['pending', 'processing'].includes(payoutStatus.status) ? (
+            <div className="mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${payoutStatus.status === 'pending' ? 'bg-yellow-400 animate-pulse' : 'bg-blue-400 animate-pulse'}`} />
+                <span className="text-xs text-yellow-300 font-medium">
+                  {payoutStatus.status === 'pending' ? 'Payout request pending review' : 'Payout being processed'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Amount: ₹{payoutStatus.amount?.toLocaleString('en-IN')} · Requested {new Date(payoutStatus.requestedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              </p>
+            </div>
+          ) : payoutStatus && payoutStatus.status === 'rejected' ? (
+            <div className="mt-3 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              <p className="text-xs text-red-400 font-medium">Last payout request was rejected</p>
+              {payoutStatus.rejectionReason && (
+                <p className="text-xs text-gray-500 mt-0.5">Reason: {payoutStatus.rejectionReason}</p>
+              )}
+              {payoutPct >= 100 && data?.status === 'active' && (
+                <button
+                  onClick={() => setShowPayoutModal(true)}
+                  className="mt-2 text-xs font-pixel bg-green-500/20 border border-green-500/30 text-green-400 rounded-lg px-4 py-1.5 hover:bg-green-500/30 transition-colors"
+                >
+                  REQUEST PAYOUT AGAIN
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="mt-2 flex items-center justify-between">
+              <p className="text-xs text-gray-600">
+                {payoutPct >= 100
+                  ? '✅ You\'re eligible for a payout!'
+                  : `₹${Math.max(0, (data?.payoutThreshold ?? 300) - (data?.pendingCommission ?? 0)).toLocaleString('en-IN')} more to reach payout threshold`}
+              </p>
+              {payoutPct >= 100 && data?.status === 'active' && (
+                <button
+                  onClick={() => setShowPayoutModal(true)}
+                  className="text-xs font-pixel bg-green-500/20 border border-green-500/30 text-green-400 rounded-lg px-4 py-2 hover:bg-green-500/30 transition-colors"
+                >
+                  REQUEST PAYOUT
+                </button>
+              )}
+            </div>
+          )}
+
+          {payoutStatus && payoutStatus.status === 'completed' && payoutStatus.transactionId && (
+            <div className="mt-3 bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+              <p className="text-xs text-green-400 font-medium">Last payout completed ✓</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Txn: {payoutStatus.transactionId} · {new Date(payoutStatus.processedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
+              {payoutPct >= 100 && data?.status === 'active' && (
+                <button
+                  onClick={() => setShowPayoutModal(true)}
+                  className="mt-2 text-xs font-pixel bg-green-500/20 border border-green-500/30 text-green-400 rounded-lg px-4 py-1.5 hover:bg-green-500/30 transition-colors"
+                >
+                  REQUEST NEW PAYOUT
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Stats Grid ── */}
@@ -378,6 +651,19 @@ const CreatorDashboardPage = () => {
         </div>
 
       </main>
+
+      {/* ── Payout Request Modal ── */}
+      {showPayoutModal && (
+        <PayoutRequestModal
+          pendingCommission={data?.pendingCommission ?? 0}
+          onClose={() => setShowPayoutModal(false)}
+          onSuccess={(req) => {
+            setPayoutStatus(req);
+            setShowPayoutModal(false);
+            showToast('Payout request submitted!');
+          }}
+        />
+      )}
     </>
   );
 };

@@ -22,6 +22,8 @@ const WEBHOOK_MAP = {
   referral_rejected:    'DISCORD_WEBHOOK_SUPPORT_REJECTIONS',
   fraud_alert:          'DISCORD_WEBHOOK_SUPPORT_FRAUD',
   payout_processed:     'DISCORD_WEBHOOK_SUPPORT_PAYOUTS',
+  payout_requested:     'DISCORD_WEBHOOK_SUPPORT_PAYOUTS',
+  payout_rejected:      'DISCORD_WEBHOOK_SUPPORT_PAYOUTS',
 };
 
 // ─── Embed builders ───────────────────────────────────────
@@ -105,6 +107,34 @@ function buildEmbed(type, data) {
           { name: 'Amount', value: `₹${data.amount}`, inline: true },
           { name: 'Remaining', value: `₹${data.remainingBalance}`, inline: true },
           ...(data.processedBy ? [{ name: 'Processed By', value: data.processedBy, inline: true }] : []),
+        ],
+        timestamp: new Date().toISOString(),
+      };
+
+    case 'payout_requested':
+      return {
+        title: '📨 Payout Request Submitted',
+        color: 0xf59e0b,
+        fields: [
+          { name: 'Creator', value: data.creatorName, inline: true },
+          { name: 'Code', value: `\`${data.referralCode}\``, inline: true },
+          { name: 'Amount', value: `₹${data.amount}`, inline: true },
+          { name: 'Method', value: data.method || '—', inline: true },
+        ],
+        timestamp: new Date().toISOString(),
+        footer: { text: 'Review in Admin Panel → Payouts → Requests' },
+      };
+
+    case 'payout_rejected':
+      return {
+        title: '❌ Payout Request Rejected',
+        color: 0xef4444,
+        fields: [
+          { name: 'Creator', value: data.creatorName, inline: true },
+          { name: 'Code', value: `\`${data.referralCode}\``, inline: true },
+          { name: 'Amount', value: `₹${data.amount}`, inline: true },
+          ...(data.reason ? [{ name: 'Reason', value: data.reason, inline: false }] : []),
+          ...(data.rejectedBy ? [{ name: 'Rejected By', value: data.rejectedBy, inline: true }] : []),
         ],
         timestamp: new Date().toISOString(),
       };

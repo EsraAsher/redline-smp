@@ -181,6 +181,22 @@ export const processPayout = (partnerId, amount, note = '') =>
     body: JSON.stringify({ partnerId, amount, ...(note ? { note } : {}) }),
   });
 
+// ─── Payout Requests (Admin) ──────────────────────────────
+export const fetchPayoutRequests = (status = 'pending,processing') =>
+  request(`/payouts/requests?status=${status}`);
+export const markPayoutRequestProcessing = (id) =>
+  request(`/payouts/requests/${id}/processing`, { method: 'PATCH' });
+export const completePayoutRequest = (id, transactionId) =>
+  request(`/payouts/requests/${id}/complete`, { method: 'PATCH', body: JSON.stringify({ transactionId }) });
+export const rejectPayoutRequest = (id, reason = '') =>
+  request(`/payouts/requests/${id}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) });
+
+// ─── Settings (Admin) ────────────────────────────────────
+export const fetchPublicSettings = () => request('/settings/public');
+export const fetchSettings = () => request('/settings');
+export const updateSettings = (data) =>
+  request('/settings', { method: 'PATCH', body: JSON.stringify(data) });
+
 // ─── Creator Dashboard ───────────────────────────────
 function isTokenExpired(token) {
   try {
@@ -212,3 +228,9 @@ function creatorRequest(url, options = {}) {
 export const creatorVerify = () => creatorRequest('/creator/verify');
 export const fetchCreatorDashboard = () => creatorRequest('/creator/me');
 export const fetchCreatorInsights = () => creatorRequest('/creator/me/insights');
+
+// ─── Creator Payout Requests ─────────────────────────────
+export const submitCreatorPayoutRequest = (data) =>
+  creatorRequest('/creator/me/payout-request', { method: 'POST', body: JSON.stringify(data) });
+export const fetchCreatorPayoutStatus = () =>
+  creatorRequest('/creator/me/payout-request');
