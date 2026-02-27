@@ -211,3 +211,4 @@ function creatorRequest(url, options = {}) {
 
 export const creatorVerify = () => creatorRequest('/creator/verify');
 export const fetchCreatorDashboard = () => creatorRequest('/creator/me');
+export const fetchCreatorInsights = () => creatorRequest('/creator/me/insights');

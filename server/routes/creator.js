@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import ReferralPartner from '../models/ReferralPartner.js';
+import Order from '../models/Order.js';
 import creatorAuthMiddleware from '../middleware/creatorAuth.js';
 
 const router = Router();
@@ -94,6 +95,13 @@ router.get('/auth/discord/callback', async (req, res) => {
       return res.redirect(`${frontendUrl}/creator/login?error=not_partner`);
     }
 
+    // Save/refresh Discord display name on every login
+    const displayName = discordUser.global_name || discordUser.username || '';
+    if (displayName && partner.discordUsername !== displayName) {
+      partner.discordUsername = displayName;
+      await partner.save();
+    }
+
     // Issue JWT for creator session
     const token = jwt.sign(
       { id: partner._id, discordId, type: 'creator' },
@@ -117,6 +125,7 @@ router.get('/me', creatorAuthMiddleware, async (req, res) => {
     res.json({
       creatorName: c.creatorName,
       discordId: c.discordId,
+      discordUsername: c.discordUsername || null,
       referralCode: c.referralCode,
       discountPercent: c.discountPercent,
       commissionPercent: c.commissionPercent,
@@ -127,6 +136,8 @@ router.get('/me', creatorAuthMiddleware, async (req, res) => {
       totalPaidOut: c.totalPaidOut,
       payoutThreshold: c.payoutThreshold,
       payoutEligible: c.pendingCommission >= c.payoutThreshold,
+      maxUses: c.maxUses || null,
+      expiresAt: c.expiresAt || null,
       status: c.status,
     });
   } catch (err) {
@@ -135,7 +146,43 @@ router.get('/me', creatorAuthMiddleware, async (req, res) => {
   }
 });
 
-// ─── 4. Verify creator token (used by frontend on reload) ─
+// ─── 4. Performance Insights (no order-level data exposed) ─
+router.get('/me/insights', creatorAuthMiddleware, async (req, res) => {
+  try {
+    const partnerId = req.creator._id;
+    const now = new Date();
+    const day7Ago = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const day30Ago = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+    const [last7Uses, last30Agg] = await Promise.all([
+      Order.countDocuments({
+        referralCreatorId: partnerId,
+        status: 'paid',
+        paidAt: { $gte: day7Ago },
+      }),
+      Order.aggregate([
+        {
+          $match: {
+            referralCreatorId: partnerId,
+            status: 'paid',
+            paidAt: { $gte: day30Ago },
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$total' } } },
+      ]),
+    ]);
+
+    res.json({
+      last7DaysUses: last7Uses,
+      last30DaysRevenue: last30Agg[0]?.total ?? 0,
+    });
+  } catch (err) {
+    console.error('[Creator] Insights error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ─── 5. Verify creator token (used by frontend on reload) ─
 router.get('/verify', creatorAuthMiddleware, async (req, res) => {
   res.json({ valid: true, creatorName: req.creator.creatorName });
 });

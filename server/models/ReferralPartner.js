@@ -12,6 +12,11 @@ const referralPartnerSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  discordUsername: {
+    type: String,
+    trim: true,
+    default: '',
+  },
 
   minecraftUsername: {
     type: String,
