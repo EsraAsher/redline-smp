@@ -229,6 +229,23 @@ router.patch('/admin/:id/approve', authMiddleware, async (req, res) => {
       reviewedBy: req.admin.username,
     }).catch(() => {});
 
+    // ── Notify Discord bot of approval ──────────────────────
+    const botUrl = process.env.BOT_ENDPOINT_URL;
+    if (botUrl) {
+      fetch(`${botUrl}/application-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bot-secret': process.env.BOT_INTERNAL_SECRET,
+        },
+        body: JSON.stringify({
+          discordId: application.discordId,
+          status: 'approved',
+          referralCode: code,
+        }),
+      }).catch(() => {});
+    }
+
     res.json({
       message: 'Referral approved successfully.',
       application,
