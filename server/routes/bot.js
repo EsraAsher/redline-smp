@@ -8,8 +8,9 @@ import ReferralApplication from '../models/ReferralApplication.js';
 import PayoutRequest from '../models/PayoutRequest.js';
 import Payout from '../models/Payout.js';
 import { getSettings } from '../models/Settings.js';
-import { sendMail, payoutProcessedHTML, payoutRejectedHTML } from '../utils/mailer.js';
+import { sendMail, payoutProcessedHTML, payoutRejectedHTML, referralApprovedHTML, referralRejectedHTML } from '../utils/mailer.js';
 import { sendDiscordEvent } from '../utils/discord.js';
+import { generateUniqueCode } from '../utils/referralCode.js';
 
 const router = Router();
 
@@ -163,11 +164,11 @@ router.post('/request-payout', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// POST /api/bot/admin/approve
+// POST /api/bot/admin/payout-approve
 // Body: { discordId }
 // Approves the pending payout request for a creator.
 // ═══════════════════════════════════════════════════════════
-router.post('/admin/approve', async (req, res) => {
+router.post('/admin/payout-approve', async (req, res) => {
   try {
     const { discordId } = req.body;
     if (!discordId) {
@@ -204,6 +205,98 @@ router.post('/admin/approve', async (req, res) => {
       },
     });
   } catch (err) {
+    console.error('[Bot API] admin/payout-approve error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/bot/admin/approve
+// Body: { discordId, approvedBy }
+// Approves a pending referral application by discordId.
+// ═══════════════════════════════════════════════════════════
+router.post('/admin/approve', async (req, res) => {
+  try {
+    const { discordId, approvedBy } = req.body;
+    if (!discordId) {
+      return res.status(400).json({ message: 'discordId is required.' });
+    }
+
+    const application = await ReferralApplication.findOne({ discordId, status: 'pending' });
+    if (!application) {
+      return res.status(404).json({ message: 'No pending application found.' });
+    }
+
+    // Generate referral code (shared util)
+    const code = await generateUniqueCode(application.creatorName);
+
+    // Create partner document (mirrors dashboard approval)
+    const partner = await ReferralPartner.create({
+      creatorName: application.creatorName,
+      discordId: application.discordId,
+      minecraftUsername: application.minecraftUsername,
+      referralCode: code,
+      discountPercent: 10,
+      commissionPercent: 10,
+      totalUses: 0,
+      totalRevenueGenerated: 0,
+      totalCommissionEarned: 0,
+      pendingCommission: 0,
+      totalPaidOut: 0,
+      payoutThreshold: 0,
+      status: 'active',
+      applicationId: application._id,
+    });
+
+    // Mark application approved
+    application.status = 'approved';
+    application.reviewedAt = new Date();
+    // reviewedBy is ObjectId ref to Admin — omitted for bot (no admin identity)
+    await application.save();
+
+    // Notifications (fire-and-forget)
+    sendMail({
+      to: application.email,
+      subject: '🎉 You\'re Approved! — Redline SMP Referral Program',
+      html: referralApprovedHTML({
+        creatorName: application.creatorName,
+        referralCode: code,
+        discountPercent: partner.discountPercent,
+        commissionPercent: partner.commissionPercent,
+      }),
+    }).catch(() => {});
+
+    sendDiscordEvent('referral_approved', {
+      creatorName: application.creatorName,
+      referralCode: code,
+      discountPercent: partner.discountPercent,
+      commissionPercent: partner.commissionPercent,
+      reviewedBy: approvedBy || 'Bot Admin',
+    }).catch(() => {});
+
+    // Notify Discord bot of approval
+    const botUrl = process.env.BOT_ENDPOINT_URL;
+    if (botUrl) {
+      fetch(`${botUrl}/application-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bot-secret': process.env.BOT_INTERNAL_SECRET,
+        },
+        body: JSON.stringify({
+          discordId: application.discordId,
+          status: 'approved',
+          referralCode: code,
+        }),
+      }).catch(() => {});
+    }
+
+    res.json({
+      success: true,
+      referralCode: code,
+      creatorName: application.creatorName,
+    });
+  } catch (err) {
     console.error('[Bot API] admin/approve error:', err);
     res.status(500).json({ message: 'Server error' });
   }
@@ -211,10 +304,54 @@ router.post('/admin/approve', async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════
 // POST /api/bot/admin/reject
+// Body: { discordId, reason?, rejectedBy }
+// Rejects a pending referral application by discordId.
+// ═══════════════════════════════════════════════════════════
+router.post('/admin/reject', async (req, res) => {
+  try {
+    const { discordId, reason, rejectedBy } = req.body;
+    if (!discordId) {
+      return res.status(400).json({ message: 'discordId is required.' });
+    }
+
+    const application = await ReferralApplication.findOne({ discordId, status: 'pending' });
+    if (!application) {
+      return res.status(404).json({ message: 'No pending application found.' });
+    }
+
+    application.status = 'rejected';
+    application.reviewReason = reason?.trim() || '';
+    application.reviewedAt = new Date();
+    await application.save();
+
+    // Notifications (fire-and-forget)
+    sendMail({
+      to: application.email,
+      subject: '📋 Referral Application Update — Redline SMP',
+      html: referralRejectedHTML({ creatorName: application.creatorName }),
+    }).catch(() => {});
+
+    sendDiscordEvent('referral_rejected', {
+      creatorName: application.creatorName,
+      reviewedBy: rejectedBy || 'Bot Admin',
+    }).catch(() => {});
+
+    res.json({
+      success: true,
+      message: `Application for ${application.creatorName} rejected.`,
+    });
+  } catch (err) {
+    console.error('[Bot API] admin/reject error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/bot/admin/payout-reject
 // Body: { discordId, reason? }
 // Rejects the open payout request for a creator.
 // ═══════════════════════════════════════════════════════════
-router.post('/admin/reject', async (req, res) => {
+router.post('/admin/payout-reject', async (req, res) => {
   try {
     const { discordId, reason } = req.body;
     if (!discordId) {
@@ -339,6 +476,7 @@ router.post('/admin/payout-complete', async (req, res) => {
       amount: pr.amount,
       creatorName: pr.creatorName,
       referralCode: pr.referralCode,
+      processedVia: 'bot',
       note: `Bot payout request #${pr._id} — ${pr.method.toUpperCase()} — Txn: ${transactionId.trim()}`,
     });
 

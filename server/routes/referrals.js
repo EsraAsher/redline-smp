@@ -6,6 +6,7 @@ import CommissionAdjustment from '../models/CommissionAdjustment.js';
 import authMiddleware from '../middleware/auth.js';
 import { sendMail, referralApplicationReceivedHTML, referralApplicationAdminHTML, referralApprovedHTML, referralRejectedHTML } from '../utils/mailer.js';
 import { sendDiscordEvent } from '../utils/discord.js';
+import { generateUniqueCode } from '../utils/referralCode.js';
 
 const router = Router();
 
@@ -17,23 +18,6 @@ const applyLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Too many applications. Please try again later.' },
 });
-
-// ─── Helper: auto-generate a unique referral code ─────────
-async function generateUniqueCode(baseName) {
-  const prefix = baseName
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '')
-    .slice(0, 6) || 'REDLINE';
-
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const suffix = Math.random().toString(36).substring(2, 5).toUpperCase();
-    const code = `${prefix}${suffix}`;
-    const exists = await ReferralPartner.findOne({ referralCode: code });
-    if (!exists) return code;
-  }
-  // Fallback: timestamp-based
-  return `RL${Date.now().toString(36).toUpperCase()}`;
-}
 
 // ═══════════════════════════════════════════════════════════
 // PUBLIC — Creator submits application
